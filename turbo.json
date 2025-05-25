@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "ui": "stream",
+  "envMode": "loose",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build", "test"],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        ".basehub/**",
+        "**/generated/**"
+      ]
+    },
+    "test": {
+      "dependsOn": ["^test"]
+    },
+    "analyze": {
+      "dependsOn": ["^analyze"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "migrate": {
+      "cache": false
+    },
+    "studio": {
+      "cache": false
+    },
+    "generate": {
+      "cache": false
+    },
+    "pull": {
+      "cache": false
+    },
+    "//#clean": {
+      "cache": false
+    }
+  }
+}
