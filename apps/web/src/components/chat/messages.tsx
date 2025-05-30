@@ -16,7 +16,7 @@ interface MessagesProps {
   messagesContainerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   isReadonly: boolean;
-  openCanvas: () => void
+  openCanvas: () => void;
 }
 
 function PureMessages({
@@ -31,7 +31,6 @@ function PureMessages({
   messagesEndRef,
   openCanvas
 }: MessagesProps) {
-
   return (
     <div
       ref={messagesContainerRef}
@@ -55,7 +54,9 @@ function PureMessages({
 
       {status === 'submitted' &&
         messages.length > 0 &&
-        messages.at(-1)?.role === 'user' && <ThinkingMessage />}
+        messages.at(-1)?.role === 'user' && (
+          <ThinkingMessage />
+        )}
 
       <div
         ref={messagesEndRef}

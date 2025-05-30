@@ -1,6 +1,7 @@
 "use server";
 
 import { fermion, generateText, Message } from "@avenire/ai";
+import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimestamp } from "@avenire/database/queries";
 
 export async function generateTitleFromUserMessage({
   message,
@@ -36,4 +37,33 @@ export async function deleteFile(url: string) {
     return { success: false, error }
   }
 
+}
+
+export async function getRecentChats(userId: string) {
+  try {
+    const chats = await getTopChatsByUserId({ id: userId });
+    return { chats, error: null };
+  } catch (error) {
+    console.error('Failed to get recent chats:', error);
+    return { chats: [], error };
+  }
+}
+
+export async function deleteTrailingMessages({ id }: { id: string }) {
+  try {
+    const [message] = await getMessageById({ id });
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    await deleteMessagesByChatIdAfterTimestamp({
+      chatId: message.chatId,
+      timestamp: message.createdAt,
+    });
+    
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Failed to delete trailing messages:', error);
+    return { success: false, error };
+  }
 }

@@ -3,7 +3,7 @@
 import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useEffect, useRef, useState } from 'react';
-import { Check, SparklesIcon } from 'lucide-react';
+import { Check, SparklesIcon, AlertCircle } from 'lucide-react';
 import { Markdown } from './markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
@@ -15,16 +15,46 @@ import ResearchDisplay from './deepresearch-display';
 import dynamic from "next/dynamic"
 import { Button } from '@avenire/ui/src/components/button';
 import { LineChart } from "lucide-react"
-import { useGraphStore } from '../../stores/graphStore';
+import { useGraphStore } from '../../stores/canvasStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
+import { deleteTrailingMessages } from '../../actions/actions';
 
 const GraphImage = dynamic(
-  () => import("./desmos").then((mod) => mod.GraphImage),
+  () => import("../graph/desmos").then((mod) => mod.GraphImage),
   {
     ssr: false,
   }
 );
+
+// Error types for better error handling
+type MessageErrorType =
+  | 'MODEL_ERROR'
+  | 'NETWORK_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR';
+
+// User-friendly error messages
+const ERROR_MESSAGES: Record<MessageErrorType, string> = {
+  MODEL_ERROR: 'The AI model encountered an issue while processing your request.',
+  NETWORK_ERROR: 'There was a problem connecting to the server.',
+  VALIDATION_ERROR: 'There was an issue with the message format.',
+  UNKNOWN_ERROR: 'An unexpected error occurred while processing your message.'
+};
+
+// Helper function to categorize errors
+const categorizeError = (error: Error): MessageErrorType => {
+  if (error.message.includes('model') || error.message.includes('AI')) {
+    return 'MODEL_ERROR';
+  }
+  if (error.message.includes('network') || error.message.includes('connection')) {
+    return 'NETWORK_ERROR';
+  }
+  if (error.message.includes('validation') || error.message.includes('format')) {
+    return 'VALIDATION_ERROR';
+  }
+  return 'UNKNOWN_ERROR';
+};
 
 const PurePreviewMessage = ({
   chatId,
@@ -50,6 +80,19 @@ const PurePreviewMessage = ({
   const [researchData, setResearchData] = useState<Array<any>>([])
   const { addExpression } = useGraphStore()
 
+  const handleDeleteTrailing = async () => {
+    try {
+      const result = await deleteTrailingMessages({
+        id: message.id,
+      });
+      if (result.success) {
+        reload();
+      }
+    } catch (error) {
+      console.error('Failed to delete trailing messages:', error);
+    }
+  };
+
   useEffect(() => {
     if (!dataStream?.length || (messages.at(-1)?.id !== message.id)) { return };
     setResearchData(dataStream)
@@ -64,37 +107,42 @@ const PurePreviewMessage = ({
         })}
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         data-role={message.role}
       >
-        <div
-          className={cn(
-            'flex gap-4 flex-col w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl',
-          )}
-        >
+        <div className="flex gap-4 flex-col w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl">
           {message.role === 'assistant' && (
             <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
               <div className="translate-y-px">
-                <SparklesIcon size={14} />
+                <SparklesIcon className="h-4 w-4" />
               </div>
             </div>
           )}
 
-          {error &&
-            <Card className="bg-destructive text-destructive-foreground w-full">
-              <CardHeader>
-                <CardTitle>Oops, an error occured</CardTitle>
-                <CardDescription>{error.name}</CardDescription>
+          {error && (
+            <Card className="bg-destructive/10 border-destructive/20 text-destructive w-full">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <CardTitle className="text-base">Message Error</CardTitle>
+                </div>
+                <CardDescription className="text-destructive/80">
+                  {ERROR_MESSAGES[categorizeError(error)]}
+                </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                {error.message}
+              <CardContent className="text-sm text-destructive/80">
+                <p>Technical details (for support):</p>
+                <code className="block mt-1 p-2 bg-destructive/5 rounded text-xs owrap-break-word">
+                  {error.name}: {error.message}
+                </code>
               </CardContent>
             </Card>
-          }
+          )}
 
           <div className={`flex flex-col gap-4 w-full ${message.role === "user" && "items-end"}`}>
             {message.experimental_attachments && (
               <div
-                data-testid={"message-attachments"}
+                data-testid="message-attachments"
                 className="flex flex-row justify-end gap-2"
               >
                 {message.experimental_attachments.map((attachment) => (
@@ -106,9 +154,10 @@ const PurePreviewMessage = ({
               </div>
             )}
 
-            {message.role === "assistant" && researchData.length > 0 &&
+            {message.role === "assistant" && researchData.length > 0 && (
               <ResearchProcess data={researchData} />
-            }
+            )}
+
             {message.parts?.map((part, index) => {
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
@@ -128,11 +177,17 @@ const PurePreviewMessage = ({
                   <div key={key} className="flex flex-row gap-2 items-start">
                     <div
                       data-testid="message-content"
-                      className={cn('flex flex-col gap-4 w-full', 
-                        message.role === 'user' && 'bg-accent-foreground text-accent px-3 py-2 rounded-xl',
+                      className={cn('flex flex-col gap-4 w-full',
+                        message.role === 'user' && 'bg-accent-foreground text-accent px-3 py-2 rounded-xl'
                       )}
                     >
-                      <Markdown content={part.text} id={key} />
+                      {message.role === 'user' ? (
+                        <p className="text-sm" key={key}>
+                          {part.text}
+                        </p>
+                      ) : (
+                        <Markdown content={part.text} id={key} />
+                      )}
                     </div>
                   </div>
                 );
@@ -150,14 +205,21 @@ const PurePreviewMessage = ({
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
                           <GraphImage expressions={args.expressions} />
-                          <Button variant="outline" size={"sm"} onClick={() => {
-                            addExpression(args.expressions)
-                            openCanvas()
-                          }}><LineChart className="text-primary" /> Open in Canvas</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              addExpression(args.expressions);
+                              openCanvas();
+                            }}
+                            className="transition-colors"
+                          >
+                            <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
+                          </Button>
                         </div>
-                      )
+                      );
                     default:
-                      break
+                      break;
                   }
                 }
 
@@ -167,28 +229,41 @@ const PurePreviewMessage = ({
                   switch (toolName) {
                     case "deepResearch":
                       if (researchData.length <= 0) {
-                        return <ResearchDisplay data={result} />
+                        return <ResearchDisplay data={result} />;
                       }
                     case "graphTool":
                       return (
-                        <div className="flex flex-col items-start gap-2">
+                        <div key={key} className="flex flex-col items-start gap-2">
                           <GraphImage expressions={args.expressions} />
-                          <Button variant="outline" size={"sm"} onClick={() => {
-                            addExpression(args.expressions)
-                            openCanvas()
-                          }}><LineChart className="text-primary" /> Open in Canvas</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              addExpression(args.expressions);
+                              openCanvas();
+                            }}
+                            className="transition-colors"
+                          >
+                            <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
+                          </Button>
                         </div>
-                      )
+                      );
                     default:
                       break;
                   }
                 }
               }
             })}
-
           </div>
 
-          <MessageActions key={`action-${message.id}`} error={error !== undefined} isLoading={isLoading} message={message} reload={reload} />
+          <MessageActions
+            key={`action-${message.id}`}
+            error={error !== undefined}
+            isLoading={isLoading}
+            message={message}
+            reload={reload}
+            onDeleteTrailing={handleDeleteTrailing}
+          />
         </div>
       </motion.div>
     </AnimatePresence>
@@ -212,21 +287,15 @@ export const ThinkingMessage = () => {
   return (
     <motion.div
       data-testid="message-assistant-loading"
-      className="w-full mx-auto max-w-3xl px-4 group/message "
+      className="w-full mx-auto max-w-3xl px-4 group/message"
       initial={{ y: 5, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut", delay: 1 }}
       data-role={role}
     >
-      <div
-        className={cn(
-          'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
-          {
-            'group-data-[role=user]/message:bg-muted': true,
-          },
-        )}
-      >
-        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-          <SparklesIcon size={14} />
+      <div className="flex gap-4 flex-col w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl">
+        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+          <SparklesIcon className="h-4 w-4" />
         </div>
 
         <div className="flex flex-col gap-2 w-full">

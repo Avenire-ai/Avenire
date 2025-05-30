@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
-import { ArrowUpIcon, Brain, Globe, Italic, PaperclipIcon, RotateCcw, Square } from 'lucide-react';
+import { ArrowUpIcon, Brain, Globe, Italic, PaperclipIcon, RotateCcw, Square, Loader2 } from 'lucide-react';
 import { PreviewAttachment, Attachment } from './preview-attachment';
 import { Button } from '@avenire/ui/components/button';
 import { Textarea } from '@avenire/ui/components/textarea';
@@ -27,6 +27,37 @@ import { v4 as uuid } from "uuid"
 import { deleteFile } from '../../actions/actions';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toggle } from "@avenire/ui/components/toggle"
+
+// Error types for better error handling
+type InputErrorType =
+  | 'UPLOAD_ERROR'
+  | 'DELETE_ERROR'
+  | 'MODEL_BUSY'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR';
+
+// User-friendly error messages
+const ERROR_MESSAGES: Record<InputErrorType, string> = {
+  UPLOAD_ERROR: 'Unable to upload your file. Please try again or choose a different file.',
+  DELETE_ERROR: 'Unable to remove the file. Please try again.',
+  MODEL_BUSY: 'Please wait for the current response to complete before sending a new message.',
+  VALIDATION_ERROR: 'There was an issue with your input. Please check and try again.',
+  UNKNOWN_ERROR: 'Something went wrong. Please try again or contact support if the issue persists.'
+};
+
+// Helper function to categorize errors
+const categorizeError = (error: Error): InputErrorType => {
+  if (error.message.includes('upload') || error.message.includes('file')) {
+    return 'UPLOAD_ERROR';
+  }
+  if (error.message.includes('delete') || error.message.includes('remove')) {
+    return 'DELETE_ERROR';
+  }
+  if (error.message.includes('validation') || error.message.includes('invalid')) {
+    return 'VALIDATION_ERROR';
+  }
+  return 'UNKNOWN_ERROR';
+};
 
 function PureMultimodalInput({
   chatId,
@@ -157,26 +188,32 @@ function PureMultimodalInput({
               a.id === attachment.id ? { ...a, status: "failed" } : a
             )
           );
-          continue; // Skip to the next file
+          continue;
         }
-        // Upload the file
-        const response = await startUpload([attachment.file]);
 
-        if (response) {
-          setAttachments((prev) =>
-            prev.map((a) =>
-              a.id === attachment.id
-                ? {
-                  ...a,
-                  status: "completed",
-                  url: response[0].ufsUrl,
-                }
-                : a
-            )
-          );
+        const response = await startUpload([attachment.file]);
+        if (!response?.[0]?.ufsUrl) {
+          throw new Error('Upload failed: No URL returned');
         }
+
+        setAttachments((prev) =>
+          prev.map((a) =>
+            a.id === attachment.id
+              ? {
+                ...a,
+                status: "completed",
+                url: response[0].ufsUrl,
+              }
+              : a
+          )
+        );
       } catch (error) {
-        toast("Error happened")
+        console.error('Upload error:', error);
+        const errorType = categorizeError(error instanceof Error ? error : new Error('Upload failed'));
+        toast.error(ERROR_MESSAGES[errorType], {
+          description: 'If this issue persists, please try a different file or contact support.',
+          duration: 5000
+        });
         setAttachments((prev) =>
           prev.map((a) =>
             a.id === attachment.id ? { ...a, status: "failed" } : a
@@ -186,31 +223,31 @@ function PureMultimodalInput({
     }
   };
 
-  const removeAttachment = ({ status, id, url }: { status: "uploading" | "pending" | "failed", id: string, url: undefined } | { status: "completed", id: undefined, url: string }): void => {
-    setAttachments((prev) => {
+  const removeAttachment = async ({ status, id, url }: { status: "uploading" | "pending" | "failed", id: string, url: undefined } | { status: "completed", id: undefined, url: string }): Promise<void> => {
+    try {
+      setAttachments((prev) => {
+        if ((status === "uploading" || status === "pending")) {
+          const target = prev.find((a) => a.id === id);
+          target?.abortController?.abort();
+        }
 
-      if ((status === "uploading" || status === "pending")) {
-        const target = prev.find((a) => a.id === id);
-        if (target?.abortController) { target.abortController.abort() };
+        return prev.filter((a) => (a.id !== id && a.url !== url));
+      });
+
+      if (status === "completed" && url) {
+        const { error, success } = await deleteFile(url);
+        if (!success) {
+          throw new Error(typeof error === 'string' ? error : 'Failed to delete file');
+        }
       }
-
-      if (status === "completed") {
-        const deleteTarget = async () => {
-          try {
-            const { error, success } = await deleteFile(url);
-            if (!success) {
-              toast.error("Error deleting file.");
-            }
-          } catch (error) {
-            toast.error("Failed to delete file.");
-          }
-        };
-
-        deleteTarget(); // Trigger the async delete process
-      }
-
-      return prev.filter((a) => (a.id !== id && a.url !== url));
-    });
+    } catch (error) {
+      console.error('Delete error:', error);
+      const errorType = categorizeError(error instanceof Error ? error : new Error('Delete failed'));
+      toast.error(ERROR_MESSAGES[errorType], {
+        description: 'If this issue persists, please try again or contact support.',
+        duration: 5000
+      });
+    }
   };
 
 
@@ -249,7 +286,6 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-
       <AnimatePresence>
         {attachments.length > 0 && (
           <motion.div
@@ -257,6 +293,7 @@ function PureMultimodalInput({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
           >
             {attachments.map((attachment) => (
               <PreviewAttachment
@@ -269,7 +306,6 @@ function PureMultimodalInput({
         )}
       </AnimatePresence>
 
-
       <div className="flex flex-col items-start">
         <div className="flex flex-row gap-4 bg-muted rounded-2xl rounded-b-none w-full items-start">
           <Textarea
@@ -278,10 +314,7 @@ function PureMultimodalInput({
             placeholder="Send a message..."
             value={input}
             onChange={handleInput}
-            className={cn(
-              'min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none bg-muted pb-10 border',
-              className,
-            )}
+            className={cn("min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none bg-muted pb-10 shadown-none!", className)}
             rows={2}
             autoFocus
             onKeyDown={(event) => {
@@ -293,7 +326,10 @@ function PureMultimodalInput({
                 event.preventDefault();
 
                 if (status !== 'ready') {
-                  toast.error('Please wait for the model to finish its response!');
+                  toast.error(ERROR_MESSAGES.MODEL_BUSY, {
+                    description: 'The AI is currently processing your previous message.',
+                    duration: 3000
+                  });
                 } else {
                   submitForm();
                 }
@@ -306,31 +342,34 @@ function PureMultimodalInput({
             </div>
 
             <div className="w-fit flex flex-row justify-end">
-              {(status === 'error' || (messages.at(-1)?.role === "user" && status === 'submitted')) ? <ReloadButton reload={reload} /> :
-                status === 'submitted' ? (
-                  <StopButton stop={stop} setMessages={setMessages} />
-                ) : (
-                  <SendButton
-                    input={input}
-                    submitForm={submitForm}
-                    uploadQueue={uploadQueue}
-                  />
-                )
-              }
+              <SendButton
+                input={input}
+                submitForm={submitForm}
+                uploadQueue={uploadQueue}
+                status={status}
+              />
             </div>
           </div>
         </div>
         <div className="flex flex-row gap-2 p-2">
-          <Toggle size={"sm"} aria-label="Toggle Thinking" disabled={researchEnabled} onClick={() => {
-            toggleThinking()
-          }}>
-            <Brain />
+          <Toggle
+            size="sm"
+            aria-label="Toggle Thinking"
+            disabled={researchEnabled}
+            onClick={toggleThinking}
+            className="transition-colors"
+          >
+            <Brain className="h-4 w-4" />
             Thinking
           </Toggle>
-          <Toggle size={"sm"} aria-label="Toggle Deep Research" disabled={thinkingEnabled} onClick={() => {
-            toggleResearch()
-          }}>
-            <Globe />
+          <Toggle
+            size="sm"
+            aria-label="Toggle Deep Research"
+            disabled={thinkingEnabled}
+            onClick={toggleResearch}
+            className="transition-colors"
+          >
+            <Globe className="h-4 w-4" />
             Deep Research
           </Toggle>
         </div>
@@ -364,11 +403,12 @@ function PureAttachmentsButton({
         event.preventDefault();
         fileInputRef.current?.click();
       }}
-      size={"icon"}
+      size="icon"
       disabled={status !== 'ready'}
       variant="ghost"
+      className="transition-colors"
     >
-      <PaperclipIcon size={14} />
+      <PaperclipIcon className="h-4 w-4" />
     </Button>
   );
 }
@@ -383,14 +423,15 @@ function PureReloadButton({
   return (
     <Button
       data-testid="reload-button"
-      size={"icon"}
-      variant={"ghost"}
+      size="icon"
+      variant="ghost"
       onClick={(event) => {
         event.preventDefault();
         reload()
       }}
+      className="transition-colors"
     >
-      <RotateCcw size={14} />
+      <RotateCcw className="h-4 w-4" />
     </Button>
   );
 }
@@ -408,15 +449,16 @@ function PureStopButton({
   return (
     <Button
       data-testid="stop-button"
-      size={"icon"}
-      variant={"ghost"}
+      size="icon"
+      variant="ghost"
       onClick={(event) => {
         event.preventDefault();
         stop();
         setMessages((messages) => messages);
       }}
+      className="transition-colors"
     >
-      <Square size={14} />
+      <Square className="h-4 w-4" />
     </Button>
   );
 }
@@ -427,23 +469,57 @@ function PureSendButton({
   submitForm,
   input,
   uploadQueue,
+  status,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
+  status: UseChatHelpers['status'];
 }) {
+  if (status === 'error') {
+    return (
+      <Button
+        data-testid="reload-button"
+        size="icon"
+        variant="ghost"
+        onClick={(event) => {
+          event.preventDefault();
+          submitForm();
+        }}
+        className="transition-colors"
+      >
+        <RotateCcw className="h-4 w-4" />
+      </Button>
+    );
+  }
+
+  if (status === 'submitted') {
+    return (
+      <Button
+        data-testid="loading-button"
+        size="icon"
+        variant="ghost"
+        disabled
+        className="transition-colors"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Button>
+    );
+  }
+
   return (
     <Button
       data-testid="send-button"
-      size={"icon"}
-      variant={"ghost"}
+      size="icon"
+      variant="ghost"
       onClick={(event) => {
         event.preventDefault();
         submitForm();
       }}
       disabled={input.length === 0 || uploadQueue.length > 0}
+      className="transition-colors"
     >
-      <ArrowUpIcon size={14} />
+      <ArrowUpIcon className="h-4 w-4" />
     </Button>
   );
 }
@@ -451,5 +527,6 @@ function PureSendButton({
 const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.uploadQueue.length !== nextProps.uploadQueue.length) { return false };
   if (prevProps.input !== nextProps.input) { return false };
+  if (prevProps.status !== nextProps.status) { return false };
   return true;
 });

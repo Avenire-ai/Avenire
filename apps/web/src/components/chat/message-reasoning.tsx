@@ -4,7 +4,24 @@ import { useState } from 'react';
 import { ChevronDownIcon, LoaderIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Markdown } from './markdown';
-import { v4 as uuid } from "uuid"
+import { v4 as uuid } from "uuid";
+import { cn } from '@avenire/ui/utils';
+
+// Animation variants
+const variants = {
+  collapsed: {
+    height: 0,
+    opacity: 0,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  expanded: {
+    height: 'auto',
+    opacity: 1,
+    marginTop: '1rem',
+    marginBottom: '0.5rem',
+  },
+};
 
 interface MessageReasoningProps {
   isLoading: boolean;
@@ -17,42 +34,29 @@ export function MessageReasoning({
 }: MessageReasoningProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const variants = {
-    collapsed: {
-      height: 0,
-      opacity: 0,
-      marginTop: 0,
-      marginBottom: 0,
-    },
-    expanded: {
-      height: 'auto',
-      opacity: 1,
-      marginTop: '1rem',
-      marginBottom: '0.5rem',
-    },
-  };
-
   return (
     <div className="flex flex-col">
       {isLoading ? (
         <div className="flex flex-row gap-2 items-center">
-          <div className="font-medium">Reasoning</div>
+          <div className="font-medium text-foreground">Reasoning</div>
           <div className="animate-spin">
-            <LoaderIcon />
+            <LoaderIcon className="h-4 w-4" />
           </div>
         </div>
       ) : (
         <div className="flex flex-row gap-2 items-center">
-          <div className="font-medium">Reasoned for a few seconds</div>
+          <div className="font-medium text-foreground">Reasoned for a few seconds</div>
           <button
             data-testid="message-reasoning-toggle"
             type="button"
-            className={`transition-transform ${isExpanded ? "-rotate-90" : "rotate-none"} cursor-pointer`}
-            onClick={() => {
-              setIsExpanded(!isExpanded);
-            }}
+            className={cn(
+              "transition-transform cursor-pointer hover:text-primary",
+              isExpanded ? "-rotate-90" : "rotate-none"
+            )}
+            onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={isExpanded ? "Collapse reasoning" : "Expand reasoning"}
           >
-            <ChevronDownIcon />
+            <ChevronDownIcon className="h-4 w-4" />
           </button>
         </div>
       )}

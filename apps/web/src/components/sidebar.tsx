@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Home, BookOpen, Trash, Settings, ChevronDown } from "lucide-react"
+import { Home, BookOpen, Trash, Settings, ChevronDown, LogOut, User2 } from "lucide-react"
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -18,9 +18,11 @@ import {
   useSidebar,
 } from "@avenire/ui/components/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@avenire/ui/components/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@avenire/ui/components/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@avenire/ui/components/dropdown-menu"
 import { cn } from "@avenire/ui/utils"
 import { useUserStore } from "../stores/userStore"
+import { getRecentChats } from "../actions/actions"
+import { signOut } from "@avenire/auth/client"
 
 const menuItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -28,17 +30,21 @@ const menuItems = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
 
-const recentlyOpened = [
-  { label: "What is the cause for global war", href: "/courses/global-war" },
-  { label: "Eating healthy is good for you", href: "/courses/healthy-eating" },
-  { label: "What is the cause for global war", href: "/courses/global-war-2" },
-  { label: "How to get your first customer", href: "/courses/first-customer" },
-]
-
 export function Sidebar() {
   const [activeItem, setActiveItem] = useState("Home")
+  const [recentChats, setRecentChats] = useState<Array<{ id: string; title: string }>>([])
   const { open, isMobile } = useSidebar()
   const { user } = useUserStore();
+
+  useEffect(() => {
+    const fetchRecentChats = async () => {
+      if (user?.id) {
+        const { chats } = await getRecentChats(user.id);
+        setRecentChats(chats);
+      }
+    };
+    fetchRecentChats();
+  }, [user?.id]);
 
   return (
     <>
@@ -58,7 +64,7 @@ export function Sidebar() {
             </div>
             {open && <span className="text-xl font-semibold">Avenire.</span>}
           </div>
-	</SidebarHeader>
+        </SidebarHeader>
 
         <SidebarContent>
           <SidebarGroup>
@@ -87,17 +93,23 @@ export function Sidebar() {
             <SidebarGroup>
               <SidebarGroupLabel className="text-xs font-medium text-neutral-400">Recently Opened</SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu>
-                  {recentlyOpened.map((item, index) => (
-                    <SidebarMenuItem key={index}>
-                      <SidebarMenuButton asChild>
-                        <Link href={item.href} className="text-sm">
-                          <span className="truncate">{item.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
+                {recentChats.length > 0 ? (
+                  <SidebarMenu>
+                    {recentChats.map((chat) => (
+                      <SidebarMenuItem key={chat.id}>
+                        <SidebarMenuButton asChild>
+                          <Link href={`/chat/${chat.id}`} className="text-sm">
+                            <span className="truncate">{chat.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                ) : (
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm text-muted-foreground">Start a new chat to see your conversations here</p>
+                  </div>
+                )}
               </SidebarGroupContent>
             </SidebarGroup>
           )}
@@ -114,8 +126,8 @@ export function Sidebar() {
                   )}
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.imageUrl} alt={`@${user?.username}`} />
-                    <AvatarFallback>{user?.name}</AvatarFallback>
+                    <AvatarImage src={user?.imageUrl} />
+                    <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   {open && (
                     <>
@@ -129,11 +141,28 @@ export function Sidebar() {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align={open ? "end" : "start"} side={open ? "right" : "right"} className="w-[200px]">
+                <DropdownMenuItem>
+                  <Link href="/profile">
+                    <User2 className="h-4 w-4 mr-2" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Link href="/settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </SidebarFooter>
-      </ShadcnSidebar >
+      </ShadcnSidebar>
     </>
   )
 }

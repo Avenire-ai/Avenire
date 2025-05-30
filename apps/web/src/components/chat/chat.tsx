@@ -2,7 +2,7 @@
 
 import type { UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -14,26 +14,86 @@ import { motion, useInView } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@avenire/ui/components/button';
 import { Attachment } from './preview-attachment';
-import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@avenire/ui/components/resizable"
+import { Canvas, DOCK_WIDTH } from './canvas/canvas';
 import { useIsMobile } from '@avenire/ui/src/hooks/use-mobile';
-import { Canvas } from './canvas';
 
-export function Chat({
-  id,
-  initialMessages,
-  selectedModel,
-  isReadonly,
-  selectedReasoningModel
-}: {
+// Error types for better error handling
+type ChatErrorType =
+  | 'NETWORK_ERROR'
+  | 'MODEL_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'UNKNOWN_ERROR';
+
+interface ChatError extends Error {
+  type?: ChatErrorType;
+  details?: unknown;
+}
+
+// User-friendly error messages
+const ERROR_MESSAGES: Record<ChatErrorType, string> = {
+  NETWORK_ERROR: 'Unable to connect to the server. Please check your internet connection and try again.',
+  MODEL_ERROR: 'The AI model is currently experiencing issues. Please try again in a few moments.',
+  VALIDATION_ERROR: 'There was an issue with your request. Please check your input and try again.',
+  UNKNOWN_ERROR: 'Something went wrong. Please try again or contact support if the issue persists.'
+};
+
+// Helper function to categorize errors
+const categorizeError = (error: Error): ChatErrorType => {
+  if (error.name === 'NetworkError' || error.message.includes('network')) {
+    return 'NETWORK_ERROR';
+  }
+  if (error.message.includes('model') || error.message.includes('AI')) {
+    return 'MODEL_ERROR';
+  }
+  if (error.message.includes('validation') || error.message.includes('invalid')) {
+    return 'VALIDATION_ERROR';
+  }
+  return 'UNKNOWN_ERROR';
+};
+
+interface ChatProps {
   id: string;
   initialMessages: Array<UIMessage>;
   selectedModel: string;
   selectedReasoningModel: string;
   isReadonly: boolean;
-}) {
-  const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false)
-  const [deepResearchEnabled, setDeepResearchEnabled] = useState<boolean>(false)
+}
+
+export function Chat({
+  id,
+  initialMessages,
+  selectedModel,
+  selectedReasoningModel,
+  isReadonly
+}: ChatProps) {
+  const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
+  const [deepResearchEnabled, setDeepResearchEnabled] = useState<boolean>(false);
+  const [isCanvasOpen, setIsCanvasOpen] = useState(false);
+  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+
   const { mutate } = useSWRConfig();
+  const isMobile = useIsMobile();
+  const [messagesContainerRef, messagesEndRef, scroll] = useScrollToBottom<HTMLDivElement>();
+  const isInView = useInView(messagesEndRef);
+
+  const handleError = useCallback((error: Error) => {
+    // Log the full error for developers
+    console.error('Chat error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+
+    // Categorize the error
+    const errorType = categorizeError(error);
+    const userMessage = ERROR_MESSAGES[errorType];
+
+    // Show user-friendly message
+    toast.error(userMessage, {
+      description: 'If this issue persists, please contact support.',
+      duration: 5000
+    });
+  }, []);
 
   const {
     messages,
@@ -49,7 +109,14 @@ export function Chat({
     error
   } = useChat({
     id,
-    body: { chatId: id, selectedModel, selectedReasoningModel, currentPlots: [], thinkingEnabled, deepResearchEnabled },
+    body: {
+      chatId: id,
+      selectedModel,
+      selectedReasoningModel,
+      currentPlots: [],
+      thinkingEnabled,
+      deepResearchEnabled
+    },
     initialMessages,
     experimental_throttle: 100,
     sendExtraMessageFields: true,
@@ -57,121 +124,100 @@ export function Chat({
     onFinish: () => {
       mutate('/api/history');
     },
-    onError: () => {
-      toast.error('An error occured, please try again!');
-    },
+    onError: handleError,
   });
 
-  const [isCanvasOpen, setIsCanvasOpen] = useState(false)
-  const isMobile = useIsMobile()
-  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-  const [messagesContainerRef, messagesEndRef, scroll] =
-    useScrollToBottom<HTMLDivElement>();
-  const isInView = useInView(messagesEndRef)
+  const toggleResearch = useCallback(() => {
+    setDeepResearchEnabled(prev => {
+      if (prev) {
+        return false;
+      }
+      setThinkingEnabled(false);
+      return true;
+    });
+  }, []);
+
+  const toggleThinking = useCallback(() => {
+    setThinkingEnabled(prev => {
+      if (prev) {
+        return false;
+      }
+      setDeepResearchEnabled(false);
+      return true;
+    });
+  }, []);
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="w-[90%] mx-auto h-dvh">
-      <ResizablePanel defaultSize={isCanvasOpen ? (isMobile ? 0 : 60) : 100}>
-        <div className="flex flex-col min-w-0 h-full bg-background w-full">
-          <Messages
-            error={error}
-            chatId={id}
-            status={status}
-            messages={messages}
-            setMessages={setMessages}
-            reload={reload}
-            openCanvas={() => setIsCanvasOpen(true)}
-            isReadonly={isReadonly}
-            messagesContainerRef={messagesContainerRef}
-            messagesEndRef={messagesEndRef}
-          />
-          {messages.length === 0 &&
-            attachments.length === 0 &&
-            <SuggestedActions append={append} chatId={id} />
-          }
-
-
-          <form className="sticky mx-auto b-0 flex flex-col md:max-w-3xl w-full items-center">
-            <motion.div
-              initial="hidden"
-              animate={!isInView ? "visible" : "hidden"}
-              variants={{
-                "visible": { opacity: 100, visibility: "visible" },
-                "hidden": { opacity: 0, visibility: "hidden" }
-              }}
-              className="absolute top-0 z-50 -translate-y-10"
-              transition={{ duration: 0.5 }}
-            >
-              <Button variant="outline" className="rounded-full overflow-hidden" size="icon" type="button" onClick={scroll}>
-                <ChevronDown />
-              </Button>
-            </motion.div>
-            {!isReadonly && (
-              <div className="p-4 pb-0 bg-border rounded-2xl rounded-b-none gap-2 w-full">
-                <MultimodalInput
-                  chatId={id}
-                  input={input}
-                  setInput={setInput}
-                  reload={reload}
-                  researchEnabled={deepResearchEnabled}
-                  thinkingEnabled={thinkingEnabled}
-                  toggleResearch={() => {
-                    if (deepResearchEnabled) {
-                      setDeepResearchEnabled(false)
-                    } else {
-                      setDeepResearchEnabled(true)
-                      setThinkingEnabled(false)
-                    }
-                  }}
-                  toggleThinking={() => {
-                    if (thinkingEnabled) {
-                      setThinkingEnabled(false)
-                    } else {
-                      setThinkingEnabled(true)
-                      setDeepResearchEnabled(false)
-                    }
-                  }}
-                  handleSubmit={handleSubmit}
-                  setData={setData}
-                  status={status}
-                  stop={stop}
-                  attachments={attachments}
-                  setAttachments={setAttachments}
-                  messages={messages}
-                  setMessages={setMessages}
-                  append={append}
-                />
-              </div>
-            )}
-          </form>
-        </div>
-      </ResizablePanel>
-      <CanvasPanel isCanvasOpen={isCanvasOpen} setIsCanvasOpen={setIsCanvasOpen} isMobile={isMobile} />
-    </ResizablePanelGroup>
-  );
-}
-
-function CanvasPanel({
-  isCanvasOpen,
-  setIsCanvasOpen,
-  isMobile,
-}: {
-  isCanvasOpen: boolean;
-  setIsCanvasOpen: (value: boolean) => void;
-  isMobile: boolean;
-}) {
-  return (
-    <>
-      <ResizableHandle />
-      <ResizablePanel
-        defaultSize={isCanvasOpen ? (isMobile ? 100 : 40) : 0}
-        minSize={isCanvasOpen ? (isMobile ? 100 : 40) : 0}
-        maxSize={isCanvasOpen ? (isMobile ? 100 : 60) : 0}
+    <div className={"flex h-screen w-full"}>
+      <div
+        className={"transition-all duration-300 flex flex-col min-w-0 h-full bg-background w-full"}
+        style={{
+          marginRight: isCanvasOpen && !isMobile ? `${DOCK_WIDTH - 20}px` : '0px'
+        }}
       >
-        <div className={`h-full w-full ${!isCanvasOpen ? "hidden" : ""}`}>
-          <Canvas />
-        </div>
-      </ResizablePanel>
-    </>
+        <Messages
+          error={error}
+          chatId={id}
+          status={status}
+          messages={messages}
+          setMessages={setMessages}
+          reload={reload}
+          openCanvas={() => setIsCanvasOpen(true)}
+          isReadonly={isReadonly}
+          messagesContainerRef={messagesContainerRef}
+          messagesEndRef={messagesEndRef}
+        />
+        {messages.length === 0 && attachments.length === 0 && (
+          <SuggestedActions append={append} chatId={id} />
+        )}
+
+        <form className={"sticky mx-auto b-0 flex flex-col md:max-w-3xl w-full items-center"}>
+          <motion.div
+            initial="hidden"
+            animate={!isInView ? "visible" : "hidden"}
+            variants={{
+              visible: { opacity: 1, visibility: "visible" },
+              hidden: { opacity: 0, visibility: "hidden" }
+            }}
+            className={"absolute top-0 z-50 -translate-y-10"}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <Button
+              variant="outline"
+              className="rounded-full shadow-md hover:shadow-lg transition-shadow"
+              size="icon"
+              type="button"
+              onClick={scroll}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </motion.div>
+          {!isReadonly && (
+            <div className={"p-4 pb-0 bg-border rounded-2xl rounded-b-none gap-2 w-full"}>
+              <MultimodalInput
+                chatId={id}
+                input={input}
+                setInput={setInput}
+                reload={reload}
+                researchEnabled={deepResearchEnabled}
+                thinkingEnabled={thinkingEnabled}
+                toggleResearch={toggleResearch}
+                toggleThinking={toggleThinking}
+                handleSubmit={handleSubmit}
+                setData={setData}
+                status={status}
+                stop={stop}
+                attachments={attachments}
+                setAttachments={setAttachments}
+                messages={messages}
+                setMessages={setMessages}
+                append={append}
+              />
+            </div>
+          )}
+        </form>
+        <Canvas open={isCanvasOpen} onClose={() => setIsCanvasOpen(false)} />
+      </div>
+    </div>
   );
 }

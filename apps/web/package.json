@@ -13,7 +13,9 @@
   "dependencies": {
     "@avenire/auth": "*",
     "@avenire/ui": "*",
+    "@excalidraw/excalidraw": "^0.18.0",
     "@tailwindcss/postcss": "^4.0.9",
+    "@tailwindcss/typography": "^0.5.16",
     "@uploadthing/react": "^7.3.0",
     "date-fns": "^4.1.0",
     "desmos-react": "^1.2.0",
