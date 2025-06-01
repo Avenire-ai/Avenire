@@ -2,7 +2,7 @@
 
 import type { UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -16,6 +16,7 @@ import { Button } from '@avenire/ui/components/button';
 import { Attachment } from './preview-attachment';
 import { Canvas, DOCK_WIDTH } from './canvas/canvas';
 import { useIsMobile } from '@avenire/ui/src/hooks/use-mobile';
+import { getChatTitle } from '../../actions/actions';
 
 // Error types for better error handling
 type ChatErrorType =
@@ -70,6 +71,7 @@ export function Chat({
   const [deepResearchEnabled, setDeepResearchEnabled] = useState<boolean>(false);
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+  const [canvasKey, setCanvasKey] = useState(0);
 
   const { mutate } = useSWRConfig();
   const isMobile = useIsMobile();
@@ -94,6 +96,15 @@ export function Chat({
       duration: 5000
     });
   }, []);
+
+  const handleToolCall = useCallback((toolCall: { name: string }) => {
+    if (toolCall.name === 'flashcardGeneratorTool' || toolCall.name === 'quizGeneratorTool') {
+      setCanvasKey(prev => prev + 1);
+      if (!isCanvasOpen) {
+        setIsCanvasOpen(true);
+      }
+    }
+  }, [isCanvasOpen]);
 
   const {
     messages,
@@ -121,10 +132,18 @@ export function Chat({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
-    onFinish: () => {
+    onFinish: async () => {
       mutate('/api/history');
+      // Update page title when chat is finished
+      if (messages.length < 3) {
+        const { title } = await getChatTitle({ chatId: id });
+        document.title = `${title} | Avenire`;
+      }
     },
     onError: handleError,
+    onToolCall: ({ toolCall }) => {
+      handleToolCall({ name: toolCall.toolName })
+    },
   });
 
   const toggleResearch = useCallback(() => {
@@ -193,7 +212,7 @@ export function Chat({
             </Button>
           </motion.div>
           {!isReadonly && (
-            <div className={"p-4 pb-0 bg-border rounded-2xl rounded-b-none gap-2 w-full"}>
+            <div className={"p-2 pb-0 bg-border rounded-2xl rounded-b-none gap-2 w-full"}>
               <MultimodalInput
                 chatId={id}
                 input={input}
@@ -216,7 +235,12 @@ export function Chat({
             </div>
           )}
         </form>
-        <Canvas open={isCanvasOpen} onClose={() => setIsCanvasOpen(false)} />
+        <Canvas
+          key={canvasKey}
+          open={isCanvasOpen}
+          onClose={() => setIsCanvasOpen(false)}
+          chatId={id}
+        />
       </div>
     </div>
   );

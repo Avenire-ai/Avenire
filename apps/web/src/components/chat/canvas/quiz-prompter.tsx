@@ -1,71 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle, XCircle, RotateCcw, Trophy, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react"
 import { Button } from "@avenire/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@avenire/ui/components/select"
 import { Badge } from "@avenire/ui/components/badge"
 import { Card, CardContent } from "@avenire/ui/components/card"
+import { getQuizzesForChat } from "../../../actions/actions"
+import { Markdown } from "../../markdown"
 
-const quizQuestions = [
-  {
-    id: 1,
-    type: "MCQ",
-    question: "What does JSX stand for?",
-    options: ["JavaScript XML", "Java Syntax Extension", "JavaScript Extension", "Java XML"],
-    correct: 0,
-    explanation: "JSX stands for JavaScript XML. It allows you to write HTML-like syntax in JavaScript files.",
-    hint: "Think about what JSX allows you to write in JavaScript files - it's related to markup language.",
-    difficulty: "beginner",
-  },
-  {
-    id: 2,
-    type: "MCQ",
-    question: "Which hook is used for side effects in React?",
-    options: ["useState", "useEffect", "useContext", "useReducer"],
-    correct: 1,
-    explanation: "useEffect is used for side effects like API calls, subscriptions, and DOM manipulation.",
-    hint: "This hook is commonly used for API calls and cleanup operations.",
-    difficulty: "intermediate",
-  },
-  {
-    id: 3,
-    type: "True/False",
-    question: "React components must always return JSX.",
-    options: ["True", "False"],
-    correct: 1,
-    explanation:
-      "React components can return JSX, strings, numbers, arrays, or null. They don't always have to return JSX.",
-    hint: "Consider what else React components can return besides JSX elements.",
-    difficulty: "intermediate",
-  },
-  {
-    id: 4,
-    type: "MCQ",
-    question: "What is the virtual DOM?",
-    options: ["A copy of the real DOM", "A JavaScript representation of the DOM", "A faster version of the DOM"],
-    correct: 3,
-    explanation:
-      "The virtual DOM is a JavaScript representation of the real DOM that React uses for efficient updates.",
-    hint: "It's a concept that helps React optimize rendering performance.",
-    difficulty: "advanced",
-  },
-  {
-    id: 5,
-    type: "Image-based",
-    question: "What React pattern is shown in this code structure?",
-    options: ["Higher-Order Component", "Render Props", "Custom Hook", "Context Provider"],
-    correct: 2,
-    explanation: "This shows a custom hook pattern, which allows you to reuse stateful logic between components.",
-    hint: "Look at the naming convention and how the logic is extracted.",
-    difficulty: "advanced",
-  },
-]
+interface Quiz {
+  id: string
+  type: string
+  question: string
+  options: string[]
+  correct: number
+  explanation: string
+  hint: string
+  difficulty: string
+  createdAt: Date
+}
 
-const questionTypes = ["All", "MCQ", "True/False", "Image-based"]
+interface QuizPrompterProps {
+  chatId: string
+}
 
-export function QuizPrompter() {
+export function QuizPrompter({ chatId }: QuizPrompterProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showExplanation, setShowExplanation] = useState(false)
@@ -75,12 +36,56 @@ export function QuizPrompter() {
   const [answered, setAnswered] = useState(false)
   const [skippedQuestions, setSkippedQuestions] = useState<number[]>([])
   const [selectedType, setSelectedType] = useState("All")
+  const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      setIsLoading(true)
+      const { quizzes, error } = await getQuizzesForChat({ chatId })
+      if (!error && quizzes) {
+        // Transform the quizzes to match the Quiz interface
+        const transformedQuizzes: Quiz[] = quizzes.flatMap(quiz => {
+          const content = quiz.content as {
+            questions: Array<{
+              id: number;
+              hint: string;
+              type: string;
+              correct: number;
+              options: string[];
+              question: string;
+              difficulty: string;
+              explanation: string;
+            }>
+          }
+
+          return content.questions.map(question => ({
+            id: `${quiz.id}-${question.id}`, // Create a unique ID combining parent and question ID
+            type: question.type,
+            question: question.question,
+            options: question.options,
+            correct: question.correct,
+            explanation: question.explanation,
+            hint: question.hint,
+            difficulty: question.difficulty,
+            createdAt: quiz.createdAt
+          }))
+        })
+        setQuizzes(transformedQuizzes)
+      }
+      setIsLoading(false)
+    }
+
+    fetchQuizzes()
+  }, [chatId])
 
   // Filter questions based on selected type
-  const filteredQuestions = quizQuestions.filter((q) => selectedType === "All" || q.type === selectedType)
+  const filteredQuestions = quizzes.filter((q) => selectedType === "All" || q.type === selectedType)
 
   const question = filteredQuestions[currentQuestion]
   const totalQuestions = filteredQuestions.length
+
+  const questionTypes = ["All", ...Array.from(new Set(quizzes.map((q) => q.type)))]
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (answered) return
@@ -117,7 +122,7 @@ export function QuizPrompter() {
   }
 
   const skipQuestion = () => {
-    setSkippedQuestions([...skippedQuestions, question.id])
+    setSkippedQuestions([...skippedQuestions, Number(question.id)])
     nextQuestion()
   }
 
@@ -138,6 +143,16 @@ export function QuizPrompter() {
     if (percentage >= 60) return "Good job! 👍"
     if (percentage >= 40) return "Not bad! 📚"
     return "Keep studying! 💪"
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-2">
+          <p className="text-muted-foreground">Loading quiz...</p>
+        </div>
+      </div>
+    )
   }
 
   if (filteredQuestions.length === 0) {
@@ -250,7 +265,9 @@ export function QuizPrompter() {
 
             {/* Question Text */}
             <div className="space-y-6">
-              <h4 className="text-lg font-medium leading-relaxed">{question.question}</h4>
+              <div className="text-lg font-medium leading-relaxed">
+                <Markdown content={question.question} id={`quiz-question-${question.id}`} />
+              </div>
 
               {/* Options */}
               <div className="space-y-3">
@@ -262,17 +279,16 @@ export function QuizPrompter() {
                   return (
                     <motion.label
                       key={index}
-                      className={`flex items-center space-x-3 p-4 rounded-lg cursor-pointer transition-all ${
-                        showResult
-                          ? isCorrect
-                            ? "bg-primary/10 border border-primary/20"
-                            : isSelected
-                              ? "bg-destructive/10 border border-destructive/20"
-                              : "bg-muted/50"
+                      className={`flex items-center space-x-3 p-4 rounded-lg cursor-pointer transition-all ${showResult
+                        ? isCorrect
+                          ? "bg-primary/10 border border-primary/20"
                           : isSelected
-                            ? "bg-accent"
-                            : "hover:bg-accent/50"
-                      }`}
+                            ? "bg-destructive/10 border border-destructive/20"
+                            : "bg-muted/50"
+                        : isSelected
+                          ? "bg-accent"
+                          : "hover:bg-accent/50"
+                        }`}
                       whileHover={!answered ? { scale: 1.01 } : {}}
                     >
                       <input
@@ -284,7 +300,9 @@ export function QuizPrompter() {
                         disabled={answered}
                         className="w-4 h-4"
                       />
-                      <span className="flex-1">{option}</span>
+                      <div className="flex-1">
+                        <Markdown content={option} id={`quiz-option-${question.id}-${index}`} />
+                      </div>
                       {showResult && isCorrect && <CheckCircle className="h-5 w-5 text-primary" />}
                       {showResult && isSelected && !isCorrect && <XCircle className="h-5 w-5 text-destructive" />}
                     </motion.label>
@@ -318,7 +336,9 @@ export function QuizPrompter() {
                 >
                   <div className="space-y-3">
                     <h5 className="font-medium text-primary">Explanation</h5>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{question.explanation}</p>
+                    <div className="text-sm text-muted-foreground leading-relaxed">
+                      <Markdown content={question.explanation} id={`quiz-explanation-${question.id}`} />
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -353,7 +373,9 @@ export function QuizPrompter() {
                 <CardContent className="p-4">
                   <div className="space-y-2">
                     <h5 className="font-medium text-primary">Hint</h5>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{question.hint}</p>
+                    <div className="text-sm text-muted-foreground leading-relaxed">
+                      <Markdown content={question.hint} id={`quiz-hint-${question.id}`} />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

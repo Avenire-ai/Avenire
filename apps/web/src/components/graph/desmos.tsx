@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import { GraphingCalculator } from "desmos-react";
 import 'katex/dist/katex.min.css';
 import { useTheme } from "next-themes";
-import { useGraphStore } from "../../stores/canvasStore";
+import { useGraphStore } from "../../stores/graphStore";
 import { ImageGallery } from "@avenire/ui/components/image-gallery";
 
 const useCalculatorHook = (theme: string) => {

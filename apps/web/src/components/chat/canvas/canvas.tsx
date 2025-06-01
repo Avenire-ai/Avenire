@@ -17,13 +17,14 @@ interface CanvasProps {
   children?: ReactNode
   // Add callback to notify parent about dock state
   onOpenChange?: (open: boolean) => void
+  chatId: string // Add chatId prop
 }
 
 type Mode = "flashcards" | "whiteboard" | "graph" | "quiz"
 
 const DOCK_WIDTH = 450 // Fixed width in pixels
 
-export function Canvas({ open, onClose, children, onOpenChange }: CanvasProps) {
+export function Canvas({ open, onClose, children, onOpenChange, chatId }: CanvasProps) {
   const isMobile = useMobile()
   const [activeMode, setActiveMode] = useState<Mode>("flashcards")
 
@@ -42,28 +43,13 @@ export function Canvas({ open, onClose, children, onOpenChange }: CanvasProps) {
   const renderContent = () => {
     switch (activeMode) {
       case "flashcards":
-        return <FlashcardViewer />
+        return <FlashcardViewer chatId={chatId} />
       case "whiteboard":
-        return (
-          <div className="space-y-4 h-full">
-            <WhiteboardViewer />
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                Pen
-              </Button>
-              <Button variant="outline" size="sm">
-                Eraser
-              </Button>
-              <Button variant="outline" size="sm">
-                Clear
-              </Button>
-            </div>
-          </div>
-        )
+        return <WhiteboardViewer />
       case "graph":
         return <GraphViewer />
       case "quiz":
-        return <QuizPrompter />
+        return <QuizPrompter chatId={chatId} />
       default:
         return null
     }

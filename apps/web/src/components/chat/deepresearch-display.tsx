@@ -8,7 +8,7 @@ import { cn } from "@avenire/ui/utils"
 import { Button } from "@avenire/ui/components/button"
 import { Tabs, TabsContent } from "@avenire/ui/components/tabs"
 import { Card, CardContent } from "@avenire/ui/components/card"
-import { Markdown } from "./markdown"
+import { Markdown } from "../markdown"
 import { v4 as uuid } from "uuid"
 
 interface ResearchDisplayProps {

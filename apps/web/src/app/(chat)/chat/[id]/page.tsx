@@ -1,13 +1,37 @@
 import { notFound } from 'next/navigation';
+import { Metadata, ResolvingMetadata } from 'next';
 
 import { Attachment, UIMessage } from '@avenire/ai';
 import { getChatById, getMessagesByChatId } from '@avenire/database/queries';
 import { Message } from '@avenire/database/schema';
 import { Chat } from '../../../../components/chat/chat';
 
-export default async function Page(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const { id } = params;
+type Props = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+
+export async function generateMetadata(
+  { params, searchParams }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { id } = await params
+  const chat = await getChatById({ id });
+
+  if (!chat) {
+    return {
+      title: 'Chat Not Found | Avenire'
+    };
+  }
+
+  return {
+    title: `${chat.title} | Avenire`
+  }
+}
+
+export default async function Page({ params, searchParams }: Props) {
+  const { id } = await params;
   const chat = await getChatById({ id });
 
   if (!chat) {

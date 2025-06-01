@@ -14,6 +14,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
+import { useDropzone } from 'react-dropzone';
 
 import { ArrowUpIcon, Brain, Globe, Italic, PaperclipIcon, RotateCcw, Square, Loader2 } from 'lucide-react';
 import { PreviewAttachment, Attachment } from './preview-attachment';
@@ -24,9 +25,11 @@ import { UseChatHelpers } from '@ai-sdk/react';
 import { cn } from '@avenire/ui/utils';
 import { useUploadThing } from '../../lib/uploadClient';
 import { v4 as uuid } from "uuid"
-import { deleteFile } from '../../actions/actions';
+import { deleteFile, deleteTrailingMessages } from '../../actions/actions';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toggle } from "@avenire/ui/components/toggle"
+import { useWhiteboardStore } from "../../stores/whiteboardStore";
+import { exportToBlob } from '@excalidraw/excalidraw';
 
 // Error types for better error handling
 type InputErrorType =
@@ -99,6 +102,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const MAX_FILES = 3;
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -120,10 +124,7 @@ function PureMultimodalInput({
     }
   };
 
-  const [localStorageInput, setLocalStorageInput] = useLocalStorage(
-    'input',
-    '',
-  );
+  const [localStorageInput, setLocalStorageInput] = useLocalStorage('input', '',);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -250,12 +251,58 @@ function PureMultimodalInput({
     }
   };
 
-
-  const submitForm = useCallback(() => {
+  const submitForm = useCallback(async () => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
+    // Whiteboard attachment logic
+    const { whiteboardAPI, whiteboardLoading } = useWhiteboardStore.getState();
+    async function getDataURL() {
+      if (!whiteboardLoading && whiteboardAPI) {
+        const elements = whiteboardAPI.getSceneElements();
+        if (elements?.length) {
+          const blob = await exportToBlob({
+            elements,
+            exportPadding: 0,
+            quality: 0.7,
+            files: whiteboardAPI.getFiles() || null,
+            mimeType: "image/png",
+          });
+
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        };
+      };
+    }
+
+    let whiteboardAttachment: Attachment | null = null;
+    if (whiteboardAPI) {
+      const elements = whiteboardAPI.getSceneElements();
+      if (elements && elements.length > 0) {
+        const blob = await getDataURL();
+        if (blob) {
+          whiteboardAttachment = {
+            id: uuid(),
+            file: new File([blob], 'whiteboard.png', { type: 'image/png' }), // TODO: fix this
+            name: 'whiteboard.png',
+            url: blob,
+            contentType: 'image/png',
+            status: 'completed',
+            abortController: undefined,
+          };
+        }
+      }
+    }
+
+    const allAttachments = whiteboardAttachment
+      ? [...attachments, whiteboardAttachment]
+      : attachments;
+
     handleSubmit(undefined, {
-      experimental_attachments: attachments,
+      experimental_attachments: allAttachments,
     });
 
     setAttachments([]);
@@ -275,8 +322,71 @@ function PureMultimodalInput({
     chatId,
   ]);
 
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (attachments.length + acceptedFiles.length > MAX_FILES) {
+      toast.error('File limit exceeded', {
+        description: `You can only upload up to ${MAX_FILES} files per message.`,
+        duration: 3000
+      });
+      return;
+    }
+
+    const newAttachments: Attachment[] = acceptedFiles.map((file) => {
+      const id = uuid();
+      const abortController = new AbortController();
+
+      return {
+        id,
+        file,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        contentType: file.type,
+        status: "pending",
+        abortController,
+      };
+    });
+
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    uploadFiles(newAttachments);
+  }, [attachments.length]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    noClick: true,
+    noKeyboard: true,
+  });
+
   return (
-    <div className="relative w-full flex flex-col bg-muted gap-4 rounded-2xl rounded-b-none overflow-hidden">
+    <div
+      {...getRootProps()}
+      className="relative w-full flex flex-col bg-muted gap-4 rounded-2xl rounded-b-none overflow-hidden"
+    >
+      <AnimatePresence>
+        {isDragActive && (
+          <motion.div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="border-2 border-dashed border-primary rounded-lg p-8 text-center"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+            >
+              <PaperclipIcon className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <p className="text-lg font-medium">Drop your files here</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                You can upload up to {MAX_FILES} files
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <input
         type="file"
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
@@ -284,6 +394,7 @@ function PureMultimodalInput({
         multiple
         onChange={handleFileChange}
         tabIndex={-1}
+        {...getInputProps()}
       />
 
       <AnimatePresence>
@@ -314,7 +425,7 @@ function PureMultimodalInput({
             placeholder="Send a message..."
             value={input}
             onChange={handleInput}
-            className={cn("min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none bg-muted pb-10 shadown-none!", className)}
+            className={cn("min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none bg-muted pb-10 border-none! shadow-none!", className)}
             rows={2}
             autoFocus
             onKeyDown={(event) => {
@@ -347,6 +458,8 @@ function PureMultimodalInput({
                 submitForm={submitForm}
                 uploadQueue={uploadQueue}
                 status={status}
+                reload={reload}
+                messages={messages}
               />
             </div>
           </div>
@@ -470,11 +583,15 @@ function PureSendButton({
   input,
   uploadQueue,
   status,
+  reload,
+  messages,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
   status: UseChatHelpers['status'];
+  reload: UseChatHelpers['reload'];
+  messages: Array<UIMessage>;
 }) {
   if (status === 'error') {
     return (
@@ -482,9 +599,25 @@ function PureSendButton({
         data-testid="reload-button"
         size="icon"
         variant="ghost"
-        onClick={(event) => {
+        onClick={async (event) => {
           event.preventDefault();
-          submitForm();
+          const lastMessage = messages.at(-1);
+          if (lastMessage?.role === 'user') {
+            reload();
+          } else {
+            try {
+              if (lastMessage?.id) {
+                const result = await deleteTrailingMessages({
+                  id: lastMessage.id,
+                });
+                if (result.success) {
+                  reload();
+                }
+              }
+            } catch (error) {
+              console.error('Failed to delete trailing messages:', error);
+            }
+          }
         }}
         className="transition-colors"
       >

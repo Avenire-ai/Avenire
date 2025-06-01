@@ -5,6 +5,7 @@ import { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import dynamic from "next/dynamic";
 import "@excalidraw/excalidraw/index.css";
 import { useTheme } from "next-themes"
+import { useWhiteboardStore } from "../../../stores/whiteboardStore";
 
 const Excalidraw = dynamic(
   async () => (await import("@excalidraw/excalidraw")).Excalidraw,
@@ -28,7 +29,8 @@ export function WhiteboardViewer() {
       <Excalidraw
         zenModeEnabled
         excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-          return
+          useWhiteboardStore.getState().setWhiteboardAPI(api);
+          useWhiteboardStore.getState().setWhiteboardLoading(false);
         }}
         aiEnabled={true}
         theme={theme as "light" | "dark"}

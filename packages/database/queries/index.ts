@@ -1,8 +1,117 @@
 // import "server-only"
 
-import { chat, Message, message } from "@avenire/database/schema";
+import { chat, flashcards, Message, message, NewFlashcard, NewQuiz, quizzes } from "@avenire/database/schema";
 import { asc, desc, eq, and, gte, inArray } from "drizzle-orm";
 import { database } from "..";
+
+
+export async function saveFlashcard(flashcard: NewFlashcard) {
+  try {
+    return await database.insert(flashcards).values(flashcard)
+  } catch (error) {
+    console.error('Failed to save flashcard in database')
+    throw error
+  }
+}
+
+export async function getFlashcardById({ id }: { id: string }) {
+  try {
+    const [selectedFlashcard] = await database.select().from(flashcards).where(eq(flashcards.id, id))
+    return selectedFlashcard
+  } catch (error) {
+    console.error('Failed to get flashcard by id from database')
+    console.error(error)
+  }
+}
+
+export async function getFlashcardsByUserId({ id }: { id: string }) {
+  try {
+    return await database
+      .select()
+      .from(flashcards)
+      .where(eq(flashcards.userId, id))
+      .orderBy(desc(flashcards.createdAt))
+  } catch (error) {
+    console.error('Failed to get flashcards by user from database')
+    throw error
+  }
+}
+
+export async function getFlashcardsByChatId({ id }: { id: string }) {
+  try {
+    return await database
+      .select()
+      .from(flashcards)
+      .where(eq(flashcards.chatId, id))
+      .orderBy(desc(flashcards.createdAt))
+  } catch (error) {
+    console.error('Failed to get flashcards by chat from database')
+    throw error
+  }
+}
+
+export async function deleteFlashcardById({ id }: { id: string }) {
+  try {
+    return await database.delete(flashcards).where(eq(flashcards.id, id))
+  } catch (error) {
+    console.error('Failed to delete flashcard by id from database')
+    throw error
+  }
+}
+
+export async function saveQuiz(quiz: NewQuiz) {
+  try {
+    return await database.insert(quizzes).values(quiz)
+  } catch (error) {
+    console.error('Failed to save quiz in database')
+    throw error
+  }
+}
+
+export async function getQuizById({ id }: { id: string }) {
+  try {
+    const [selectedQuiz] = await database.select().from(quizzes).where(eq(quizzes.id, id))
+    return selectedQuiz
+  } catch (error) {
+    console.error('Failed to get quiz by id from database')
+    console.error(error)
+  }
+}
+
+export async function getQuizzesByUserId({ id }: { id: string }) {
+  try {
+    return await database
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.userId, id))
+      .orderBy(desc(quizzes.createdAt))
+  } catch (error) {
+    console.error('Failed to get quizzes by user from database')
+    throw error
+  }
+}
+
+export async function getQuizzesByChatId({ id }: { id: string }) {
+  try {
+    return await database
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.chatId, id))
+      .orderBy(desc(quizzes.createdAt))
+  } catch (error) {
+    console.error('Failed to get quizzes by chat from database')
+    throw error
+  }
+}
+
+export async function deleteQuizById({ id }: { id: string }) {
+  try {
+    return await database.delete(quizzes).where(eq(quizzes.id, id))
+  } catch (error) {
+    console.error('Failed to delete quiz by id from database')
+    throw error
+  }
+}
 
 export async function saveChat({
   id,

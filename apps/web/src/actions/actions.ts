@@ -1,7 +1,7 @@
 "use server";
 
 import { fermion, generateText, Message } from "@avenire/ai";
-import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimestamp } from "@avenire/database/queries";
+import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimestamp, getFlashcardsByChatId, getQuizzesByChatId, getChatById } from "@avenire/database/queries";
 
 export async function generateTitleFromUserMessage({
   message,
@@ -60,10 +60,40 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
       chatId: message.chatId,
       timestamp: message.createdAt,
     });
-    
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Failed to delete trailing messages:', error);
     return { success: false, error };
+  }
+}
+
+export async function getFlashcardsForChat({ chatId }: { chatId: string }) {
+  try {
+    const flashcards = await getFlashcardsByChatId({ id: chatId });
+    return { flashcards, error: null };
+  } catch (error) {
+    console.error('Failed to get flashcards for chat:', error);
+    return { flashcards: [], error };
+  }
+}
+
+export async function getQuizzesForChat({ chatId }: { chatId: string }) {
+  try {
+    const quizzes = await getQuizzesByChatId({ id: chatId });
+    return { quizzes, error: null };
+  } catch (error) {
+    console.error('Failed to get quizzes for chat:', error);
+    return { quizzes: [], error };
+  }
+}
+
+export async function getChatTitle({ chatId }: { chatId: string }) {
+  try {
+    const chat = await getChatById({ id: chatId });
+    return { title: chat?.title || 'Untitled Chat', error: null };
+  } catch (error) {
+    console.error('Failed to get chat title:', error);
+    return { title: 'Untitled Chat', error };
   }
 }

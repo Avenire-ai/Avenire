@@ -5,6 +5,9 @@ import { deleteChatById, getChatById, getChatsByUserId, getMessagesByChatId, sav
 import { generateTitleFromUserMessage } from "../../../../actions/actions"
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
+import { quizGeneratorTool } from "@avenire/ai/tools/quiz-generator"
+import { flashcardGeneratorTool } from "@avenire/ai/tools/flashcard-generator"
+
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
@@ -43,10 +46,6 @@ export async function POST(req: Request) {
       return new Response('No user message found', { status: 400 });
     }
 
-    if (!userMessage) {
-      return new Response('No user message found', { status: 400 });
-    }
-
     const chat = await getChatById({ id: chatId });
     if (!chat) {
       const title = await generateTitleFromUserMessage({
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-core")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool"]
+    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool"]
 
     return createDataStreamResponse({
       execute: (dataStream) => {
@@ -94,12 +93,19 @@ export async function POST(req: Request) {
           experimental_generateMessageId: uuid,
           tools: {
             graphTool,
+            quizGeneratorTool: quizGeneratorTool({
+              userId: session.user.id,
+              chatId
+            }),
+            flashcardGeneratorTool: flashcardGeneratorTool({
+              userId: session.user.id,
+              chatId
+            }),
             deepResearch: deepResearch({
               dataStream,
               model: reasoningModel
             }),
           },
-          // toolChoice: deepResearchEnabled ? "required" : "auto",
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
@@ -153,9 +159,7 @@ export async function POST(req: Request) {
   } catch (error) {
     return NextResponse.json({ error }, { status: 400 });
   }
-
 }
-
 
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);

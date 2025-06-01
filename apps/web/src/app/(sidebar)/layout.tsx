@@ -28,7 +28,7 @@ export default function RootLayout({
       <div className="flex min-h-screen w-full overflow-hidden">
         <Sidebar />
         <div className="flex-1 w-full h-screen overflow-y-scroll">
-	  {children}
+          {children}
         </div>
       </div>
     </SidebarProvider>

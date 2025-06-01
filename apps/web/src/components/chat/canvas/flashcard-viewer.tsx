@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, useMotionValue, useTransform, useDragControls, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@avenire/ui/components/button"
@@ -9,68 +9,70 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from "@avenire/ui/components/badge"
 import { useIsMobile as useMobile } from "@avenire/ui/src/hooks/use-mobile"
 import { Card, CardContent } from "@avenire/ui/components/card"
+import { getFlashcardsForChat } from "../../../actions/actions"
+import { Markdown } from "../../markdown"
 
-const flashcards = [
-  {
-    id: 1,
-    topic: "React Fundamentals",
-    question: "What is React?",
-    answer:
-      "A JavaScript library for building user interfaces, developed by Facebook. It uses a component-based architecture and virtual DOM for efficient rendering.",
-    tags: ["react", "fundamentals"],
-    difficulty: "beginner",
-  },
-  {
-    id: 2,
-    topic: "React Fundamentals",
-    question: "What is JSX?",
-    answer:
-      "JSX is a syntax extension for JavaScript that allows you to write HTML-like code in your JavaScript files. It gets transpiled to React.createElement() calls.",
-    tags: ["react", "jsx", "fundamentals"],
-    difficulty: "beginner",
-  },
-  {
-    id: 3,
-    topic: "React Hooks",
-    question: "What is useState?",
-    answer:
-      "useState is a React Hook that lets you add state to functional components. It returns an array with the current state value and a setter function.",
-    tags: ["react", "hooks", "state"],
-    difficulty: "intermediate",
-  },
-  {
-    id: 4,
-    topic: "React Hooks",
-    question: "What is useEffect?",
-    answer:
-      "useEffect is a React Hook that lets you perform side effects in functional components. It's similar to componentDidMount, componentDidUpdate, and componentWillUnmount combined.",
-    tags: ["react", "hooks", "effects"],
-    difficulty: "intermediate",
-  },
-  {
-    id: 5,
-    topic: "Framer Motion",
-    question: "What is Framer Motion?",
-    answer:
-      "A production-ready motion library for React that makes it easy to create fluid animations and gestures with declarative syntax.",
-    tags: ["animation", "framer-motion"],
-    difficulty: "advanced",
-  },
-]
+interface Flashcard {
+  id: string
+  question: string
+  answer: string
+  topic: string
+  difficulty: string
+  createdAt: Date
+}
 
-const allTopics = Array.from(new Set(flashcards.map((card) => card.topic)))
+interface FlashcardViewerProps {
+  chatId: string
+}
 
-export function FlashcardViewer() {
+export function FlashcardViewer({ chatId }: FlashcardViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [direction, setDirection] = useState(0)
   const [selectedTopic, setSelectedTopic] = useState<string>("")
   const [topicOpen, setTopicOpen] = useState(false)
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const isMobile = useMobile()
 
   const x = useMotionValue(0)
   const rotateY = useTransform(x, [-200, 0, 200], [-10, 0, 10])
   const dragControls = useDragControls()
+
+  useEffect(() => {
+    const fetchFlashcards = async () => {
+      setIsLoading(true)
+      const { flashcards, error } = await getFlashcardsForChat({ chatId })
+      if (!error && flashcards) {
+        // Transform the flashcards to match the Flashcard interface
+        const transformedFlashcards = flashcards.flatMap(flashcard => {
+          const content = flashcard.content as {
+            cards: Array<{
+              id: number;
+              tags: string[];
+              topic: string;
+              answer: string;
+              question: string;
+              difficulty: string;
+            }>
+          }
+
+          return content.cards.map(card => ({
+            id: `${flashcard.id}-${card.id}`, // Create a unique ID combining parent and card ID
+            question: card.question,
+            answer: card.answer,
+            topic: card.topic,
+            difficulty: card.difficulty,
+            createdAt: flashcard.createdAt
+          }))
+        })
+        setFlashcards(transformedFlashcards)
+      }
+      setIsLoading(false)
+    }
+
+    fetchFlashcards()
+  }, [chatId])
 
   // Filter flashcards based on selected filters
   const filteredCards = flashcards.filter((card) => {
@@ -81,6 +83,8 @@ export function FlashcardViewer() {
   // Reset current index if it's out of bounds after filtering
   const safeCurrentIndex = Math.min(currentIndex, filteredCards.length - 1)
   const currentCard = filteredCards[safeCurrentIndex]
+
+  const allTopics = Array.from(new Set(flashcards.map((card) => card.topic)))
 
   const nextCard = () => {
     if (safeCurrentIndex < filteredCards.length - 1) {
@@ -130,6 +134,16 @@ export function FlashcardViewer() {
     }),
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-2">
+          <p className="text-muted-foreground">Loading flashcards...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (filteredCards.length === 0) {
     return (
       <div className="space-y-4">
@@ -141,7 +155,7 @@ export function FlashcardViewer() {
         </div>
         <div className="flex items-center justify-center py-12">
           <div className="text-center space-y-2">
-            <p className="text-muted-foreground">No flashcards match your filters</p>
+            <p className="text-muted-foreground">No flashcards available</p>
             <Button variant="outline" onClick={clearFilters}>
               Reset Filters
             </Button>
@@ -232,10 +246,10 @@ export function FlashcardViewer() {
               whileHover={
                 !isMobile
                   ? {
-                      scale: 1.02,
-                      rotateX: 5,
-                      transition: { duration: 0.2 },
-                    }
+                    scale: 1.02,
+                    rotateX: 5,
+                    transition: { duration: 0.2 },
+                  }
                   : {}
               }
               className="absolute inset-0 cursor-pointer"
@@ -252,9 +266,9 @@ export function FlashcardViewer() {
                   className="absolute inset-0 bg-card rounded-xl p-6 flex flex-col justify-between text-card-foreground shadow-lg border"
                   style={{ backfaceVisibility: "hidden" }}
                 >
-                  <p className="text-center font-medium flex-1 flex items-center justify-center text-lg">
-                    {currentCard.question}
-                  </p>
+                  <div className="text-center font-medium flex-1 flex items-center justify-center text-lg">
+                    <Markdown content={currentCard.question} id={`flashcard-question-${currentCard.id}`} />
+                  </div>
                   <p className="text-xs text-center text-muted-foreground">{currentCard.topic}</p>
                 </div>
 
@@ -266,7 +280,9 @@ export function FlashcardViewer() {
                     transform: "rotateY(180deg)",
                   }}
                 >
-                  <p className="text-center text-sm leading-relaxed">{currentCard.answer}</p>
+                  <div className="text-center text-sm leading-relaxed">
+                    <Markdown content={currentCard.answer} id={`flashcard-answer-${currentCard.id}`} />
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
@@ -321,9 +337,8 @@ export function FlashcardViewer() {
           {filteredCards.map((card, index) => (
             <Card
               key={card.id}
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                index === safeCurrentIndex ? "bg-accent" : ""
-              }`}
+              className={`cursor-pointer transition-colors hover:bg-accent ${index === safeCurrentIndex ? "bg-accent" : ""
+                }`}
               onClick={() => {
                 setCurrentIndex(index)
                 setIsFlipped(false)
@@ -331,11 +346,13 @@ export function FlashcardViewer() {
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h5 className="font-medium text-sm">
-                    {index + 1}) {card.question}
-                  </h5>
+                  <div className="font-medium text-sm">
+                    {index + 1}) <Markdown content={card.question} id={`preview-question-${card.id}`} />
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{card.answer}</p>
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  <Markdown content={card.answer} id={`preview-answer-${card.id}`} />
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">{card.topic}</span>
                   <Badge variant="outline" className="text-xs">

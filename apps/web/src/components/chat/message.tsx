@@ -3,8 +3,8 @@
 import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useEffect, useRef, useState } from 'react';
-import { Check, SparklesIcon, AlertCircle } from 'lucide-react';
-import { Markdown } from './markdown';
+import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle } from 'lucide-react';
+import { Markdown } from '../markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
 import { cn } from '@avenire/ui/utils';
@@ -15,7 +15,7 @@ import ResearchDisplay from './deepresearch-display';
 import dynamic from "next/dynamic"
 import { Button } from '@avenire/ui/src/components/button';
 import { LineChart } from "lucide-react"
-import { useGraphStore } from '../../stores/canvasStore';
+import { useGraphStore } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
 import { deleteTrailingMessages } from '../../actions/actions';
@@ -201,6 +201,58 @@ const PurePreviewMessage = ({
                   const { args } = toolInvocation;
 
                   switch (toolName) {
+                    case "flashcardGeneratorTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Flashcards Generated</CardTitle>
+                              </div>
+                              <CardDescription>
+                                Click to view the flashcards in the canvas
+                              </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openCanvas}
+                                className="w-full transition-colors"
+                              >
+                                <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
+                    case "quizGeneratorTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Quiz Generated</CardTitle>
+                              </div>
+                              <CardDescription>
+                                Click to take the quiz in the canvas
+                              </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openCanvas}
+                                className="w-full transition-colors"
+                              >
+                                <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
                     case "graphTool":
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
@@ -227,6 +279,58 @@ const PurePreviewMessage = ({
                   const { result, args } = toolInvocation;
 
                   switch (toolName) {
+                    case "flashcardGeneratorTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Flashcards on {result.topic} Ready</CardTitle>
+                              </div>
+                              <CardDescription>
+                                {result.count} flashcards have been generated
+                              </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openCanvas}
+                                className="w-full transition-colors"
+                              >
+                                <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
+                    case "quizGeneratorTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Quiz on {result.topic} Ready</CardTitle>
+                              </div>
+                              <CardDescription>
+                                {result.count} questions have been generated
+                              </CardDescription>
+                            </CardHeader>
+                            <CardFooter>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openCanvas}
+                                className="w-full transition-colors"
+                              >
+                                <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        </div>
+                      );
                     case "deepResearch":
                       if (researchData.length <= 0) {
                         return <ResearchDisplay data={result} />;

@@ -23,6 +23,8 @@ import { cn } from "@avenire/ui/utils"
 import { useUserStore } from "../stores/userStore"
 import { getRecentChats } from "../actions/actions"
 import { signOut } from "@avenire/auth/client"
+import useSWR from 'swr';
+import Image from "next/image"
 
 const menuItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -32,19 +34,24 @@ const menuItems = [
 
 export function Sidebar() {
   const [activeItem, setActiveItem] = useState("Home")
-  const [recentChats, setRecentChats] = useState<Array<{ id: string; title: string }>>([])
   const { open, isMobile } = useSidebar()
   const { user } = useUserStore();
 
-  useEffect(() => {
-    const fetchRecentChats = async () => {
-      if (user?.id) {
-        const { chats } = await getRecentChats(user.id);
-        setRecentChats(chats);
-      }
-    };
-    fetchRecentChats();
-  }, [user?.id]);
+  const { data: recentChatsData } = useSWR(
+    user?.id ? '/api/history' : null,
+    async () => {
+      if (!user?.id) return { chats: [] };
+      const { chats } = await getRecentChats(user.id);
+      return { chats };
+    },
+    {
+      refreshInterval: 0, // Disable automatic polling
+      revalidateOnFocus: true, // Revalidate when window gains focus
+      revalidateOnReconnect: true, // Revalidate when browser regains connection
+    }
+  );
+
+  const recentChats = recentChatsData?.chats || [];
 
   return (
     <>
@@ -60,7 +67,7 @@ export function Sidebar() {
                 open ? "h-8 w-8" : "h-8 w-[32px] bg-opacity-80",
               )}
             >
-              <span className="text-sm font-semibold text-white">A</span>
+              <Image src="/logo.png" alt="Avenire" width={32} height={32} />
             </div>
             {open && <span className="text-xl font-semibold">Avenire.</span>}
           </div>
