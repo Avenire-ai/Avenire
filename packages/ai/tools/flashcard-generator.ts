@@ -11,7 +11,9 @@ const flashcardContentSchema = z.object({
     question: z.string().describe("The question text"),
     answer: z.string().describe("The answer text"),
     tags: z.array(z.string()).describe("Relevant tags for categorization"),
-    difficulty: z.enum(["beginner", "intermediate", "advanced"]).describe("Difficulty level of the flashcard")
+    difficulty: z.enum(["beginner", "intermediate", "advanced"]).describe("Difficulty level of the flashcard"),
+    mnemonic: z.string().optional().describe("A short memory aid or mnemonic device"),
+    keyPoint: z.string().optional().describe("The most important takeaway from this card")
   }))
 })
 
@@ -19,24 +21,39 @@ const flashcardGeneratorSchema = z.object({
   topic: z.string().describe("This should be the topic on which the flashcards must be generated. It should be a maximum of 1-2 sentences."),
   difficulty: z.string().describe("This is the difficulty of the flashcards to be framed. You can chose from \"Beginner\", \"Intermediate\" or \"Advanced\""),
   numCards: z.number().describe("This is the number of flashcards that must be generated."),
+  context: z.string().optional().describe("Additional context about the user's current learning progress or specific areas of interest")
 });
 
 export const flashcardGeneratorTool = ({ userId, chatId }: { userId: string, chatId: string }) => tool({
-  description: "A tool call to generate flashcards related to a particular topic.",
+  description: "A tool call to generate concise, focused flashcards related to a particular topic. Always use this tool proactively when explaining key concepts or when breaking down topics into essential points.",
   parameters: flashcardGeneratorSchema,
-  execute: async ({ topic, numCards, difficulty }) => {
+  execute: async ({ topic, numCards, difficulty, context }) => {
     const model = fermion.languageModel("fermion-core")
     const { object: content } = await generateObject({
       model,
       schema: flashcardContentSchema,
-      prompt: `Generate ${numCards} flashcards about ${topic} at ${difficulty} difficulty level.
+      prompt: `Generate ${numCards} concise flashcards about ${topic} at ${difficulty} difficulty level.
 
 Guidelines:
-- Questions should be clear and focused
-- Answers should be concise but comprehensive
-- Tags should be relevant and helpful for categorization
-- Content should be at the specified difficulty level
-- Each card should cover a distinct concept`
+- Keep questions and answers brief but clear (max 2-3 sentences each)
+- Focus on one key concept per card
+- Use simple, direct language
+- Include a mnemonic or memory aid when helpful
+- Highlight the most important takeaway
+- Consider the user's context: ${context || "general learning"}
+
+For each card:
+1. Write a clear, focused question
+2. Provide a concise, direct answer
+3. Add a short mnemonic if it helps memory
+4. Include one key takeaway point
+5. Use relevant tags for organization
+
+Remember:
+- Quality over quantity
+- Clarity over complexity
+- Focus on essential information
+- Make it easy to remember`
     })
 
     const id = uuid()

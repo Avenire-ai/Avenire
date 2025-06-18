@@ -20,7 +20,7 @@ const redis = createClient({
 })();
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
-  trustedOrigins: ["http://localhost:3000"],
+  trustedOrigins: ["http://localhost:3000", "https://avenire.ai"],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
@@ -50,7 +50,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       console.info(ctx.path)
-      if (ctx.path.startsWith("/api/auth/sign-up")) {
+      if (ctx.path.startsWith("https://avenire.ai/api/auth/sign-up")) {
         const newSession = ctx.context.newSession;
         if (newSession) {
           const emailer = new Emailer();
@@ -170,7 +170,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     }),
     passkey({
       rpName: "Avenire",
-      origin: "http://localhost:3000",
+      origin: "https://avenire.ai",
     }),
     nextCookies(),
   ],

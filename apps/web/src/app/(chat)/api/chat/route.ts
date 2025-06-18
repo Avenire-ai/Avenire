@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { quizGeneratorTool } from "@avenire/ai/tools/quiz-generator"
 import { flashcardGeneratorTool } from "@avenire/ai/tools/flashcard-generator"
+import { mermaidTool } from "@avenire/ai/tools/mermaid"
 
 export const maxDuration = 60;
 
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-core")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool"]
+    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "mermaidTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "mermaidTool"]
 
     return createDataStreamResponse({
       execute: (dataStream) => {
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
               dataStream,
               model: reasoningModel
             }),
+            mermaidTool,
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {

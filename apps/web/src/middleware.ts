@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   }
   try {
     const { data: session } = await betterFetch<Session>(
-      "/api/auth/get-session",
+      "http://localhost:3000/api/auth/get-session",
       {
         baseURL: request.nextUrl.origin,
         headers: {

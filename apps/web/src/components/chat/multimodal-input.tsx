@@ -189,32 +189,26 @@ function PureMultimodalInput({
               a.id === attachment.id ? { ...a, status: "failed" } : a
             )
           );
-          continue;
+          continue; // Skip to the next file
         }
-
+        // Upload the file
         const response = await startUpload([attachment.file]);
-        if (!response?.[0]?.ufsUrl) {
-          throw new Error('Upload failed: No URL returned');
-        }
 
-        setAttachments((prev) =>
-          prev.map((a) =>
-            a.id === attachment.id
-              ? {
-                ...a,
-                status: "completed",
-                url: response[0].ufsUrl,
-              }
-              : a
-          )
-        );
+        if (response) {
+          setAttachments((prev) =>
+            prev.map((a) =>
+              a.id === attachment.id
+                ? {
+                  ...a,
+                  status: "completed",
+                  url: response[0].ufsUrl,
+                }
+                : a
+            )
+          );
+        }
       } catch (error) {
-        console.error('Upload error:', error);
-        const errorType = categorizeError(error instanceof Error ? error : new Error('Upload failed'));
-        toast.error(ERROR_MESSAGES[errorType], {
-          description: 'If this issue persists, please try a different file or contact support.',
-          duration: 5000
-        });
+        toast("Error occurred")
         setAttachments((prev) =>
           prev.map((a) =>
             a.id === attachment.id ? { ...a, status: "failed" } : a
@@ -224,32 +218,33 @@ function PureMultimodalInput({
     }
   };
 
-  const removeAttachment = async ({ status, id, url }: { status: "uploading" | "pending" | "failed", id: string, url: undefined } | { status: "completed", id: undefined, url: string }): Promise<void> => {
-    try {
-      setAttachments((prev) => {
-        if ((status === "uploading" || status === "pending")) {
-          const target = prev.find((a) => a.id === id);
-          target?.abortController?.abort();
-        }
+  const removeAttachment = ({ status, id, url }: { status: "uploading" | "pending" | "failed", id: string, url: undefined } | { status: "completed", id: undefined, url: string }): void => {
+    setAttachments((prev) => {
 
-        return prev.filter((a) => (a.id !== id && a.url !== url));
-      });
-
-      if (status === "completed" && url) {
-        const { error, success } = await deleteFile(url);
-        if (!success) {
-          throw new Error(typeof error === 'string' ? error : 'Failed to delete file');
-        }
+      if ((status === "uploading" || status === "pending")) {
+        const target = prev.find((a) => a.id === id);
+        if (target?.abortController) { target.abortController.abort() };
       }
-    } catch (error) {
-      console.error('Delete error:', error);
-      const errorType = categorizeError(error instanceof Error ? error : new Error('Delete failed'));
-      toast.error(ERROR_MESSAGES[errorType], {
-        description: 'If this issue persists, please try again or contact support.',
-        duration: 5000
-      });
-    }
+
+      if (status === "completed") {
+        const deleteTarget = async () => {
+          try {
+            const { error, success } = await deleteFile(url);
+            if (!success) {
+              toast.error("Error deleting file.");
+            }
+          } catch (error) {
+            toast.error("Failed to delete file.");
+          }
+        };
+
+        deleteTarget(); // Trigger the async delete process
+      }
+
+      return prev.filter((a) => (a.id !== id && a.url !== url));
+    });
   };
+
 
   const submitForm = useCallback(async () => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
@@ -359,12 +354,12 @@ function PureMultimodalInput({
   return (
     <div
       {...getRootProps()}
-      className="relative w-full flex flex-col bg-muted gap-4 rounded-2xl rounded-b-none overflow-hidden"
+      className="relative w-full flex flex-col bg-muted/40 border-foreground/70 gap-4 rounded-2xl rounded-b-none overflow-hidden"
     >
       <AnimatePresence>
         {isDragActive && (
           <motion.div
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -418,14 +413,14 @@ function PureMultimodalInput({
       </AnimatePresence>
 
       <div className="flex flex-col items-start">
-        <div className="flex flex-row gap-4 bg-muted rounded-2xl rounded-b-none w-full items-start">
+        <div className="flex flex-row gap-4 bg-transpartent rounded-2xl rounded-b-none w-full items-start">
           <Textarea
             data-testid="multimodal-input"
             ref={textareaRef}
             placeholder="Send a message..."
             value={input}
             onChange={handleInput}
-            className={cn("min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none bg-muted pb-10 border-none! shadow-none!", className)}
+            className={cn("min-h-[24px] max-h-[calc(30dvh)] [&::-webkit-scrollbar-thumb]:bg-background overflow-visible resize-none pb-10 border-none! shadow-none!", className)}
             rows={2}
             autoFocus
             onKeyDown={(event) => {
@@ -528,56 +523,6 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
-function PureReloadButton({
-  reload,
-}: {
-  reload: UseChatHelpers['reload'];
-}) {
-  return (
-    <Button
-      data-testid="reload-button"
-      size="icon"
-      variant="ghost"
-      onClick={(event) => {
-        event.preventDefault();
-        reload()
-      }}
-      className="transition-colors"
-    >
-      <RotateCcw className="h-4 w-4" />
-    </Button>
-  );
-}
-
-const ReloadButton = memo(PureReloadButton);
-
-
-function PureStopButton({
-  stop,
-  setMessages,
-}: {
-  stop: () => void;
-  setMessages: UseChatHelpers['setMessages'];
-}) {
-  return (
-    <Button
-      data-testid="stop-button"
-      size="icon"
-      variant="ghost"
-      onClick={(event) => {
-        event.preventDefault();
-        stop();
-        setMessages((messages) => messages);
-      }}
-      className="transition-colors"
-    >
-      <Square className="h-4 w-4" />
-    </Button>
-  );
-}
-
-const StopButton = memo(PureStopButton);
-
 function PureSendButton({
   submitForm,
   input,
@@ -593,7 +538,7 @@ function PureSendButton({
   reload: UseChatHelpers['reload'];
   messages: Array<UIMessage>;
 }) {
-  if (status === 'error') {
+  if (status === 'error' || messages.at(-1)?.role === "user") {
     return (
       <Button
         data-testid="reload-button"
@@ -601,7 +546,7 @@ function PureSendButton({
         variant="ghost"
         onClick={async (event) => {
           event.preventDefault();
-          const lastMessage = messages.at(-1);
+          const lastMessage = messages.at(-2);
           if (lastMessage?.role === 'user') {
             reload();
           } else {

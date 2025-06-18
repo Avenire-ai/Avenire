@@ -14,9 +14,11 @@ import { motion, useInView } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@avenire/ui/components/button';
 import { Attachment } from './preview-attachment';
-import { Canvas, DOCK_WIDTH } from './canvas/canvas';
+import { Canvas, DOCK_WIDTH, type Mode } from './canvas/canvas';
 import { useIsMobile } from '@avenire/ui/src/hooks/use-mobile';
 import { getChatTitle } from '../../actions/actions';
+import { useCanvasStore } from '../../stores/canvasStore'
+import { usePathname } from 'next/navigation'
 
 // Error types for better error handling
 type ChatErrorType =
@@ -69,14 +71,21 @@ export function Chat({
 }: ChatProps) {
   const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
   const [deepResearchEnabled, setDeepResearchEnabled] = useState<boolean>(false);
-  const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const [canvasKey, setCanvasKey] = useState(0);
+  const pathname = usePathname();
 
   const { mutate } = useSWRConfig();
   const isMobile = useIsMobile();
   const [messagesContainerRef, messagesEndRef, scroll] = useScrollToBottom<HTMLDivElement>();
   const isInView = useInView(messagesEndRef);
+
+  const { isOpen: isCanvasOpen, mode: canvasMode, openCanvas, closeCanvas, setChatId } = useCanvasStore();
+
+  // Close canvas on page change or refresh
+  useEffect(() => {
+    closeCanvas();
+  }, [pathname, closeCanvas]);
 
   const handleError = useCallback((error: Error) => {
     // Log the full error for developers
@@ -101,10 +110,11 @@ export function Chat({
     if (toolCall.name === 'flashcardGeneratorTool' || toolCall.name === 'quizGeneratorTool') {
       setCanvasKey(prev => prev + 1);
       if (!isCanvasOpen) {
-        setIsCanvasOpen(true);
+        setChatId(id)
+        openCanvas(toolCall.name === 'flashcardGeneratorTool' ? 'flashcards' : 'quiz');
       }
     }
-  }, [isCanvasOpen]);
+  }, [isCanvasOpen, id, openCanvas]);
 
   const {
     messages,
@@ -139,11 +149,13 @@ export function Chat({
         const { title } = await getChatTitle({ chatId: id });
         document.title = `${title} | Avenire`;
       }
+      messages.at(-1)?.parts.forEach((part, i) => {
+        if (part.type === "tool-invocation") {
+          handleToolCall({ name: part.toolInvocation.toolName })
+        }
+      })
     },
     onError: handleError,
-    onToolCall: ({ toolCall }) => {
-      handleToolCall({ name: toolCall.toolName })
-    },
   });
 
   const toggleResearch = useCallback(() => {
@@ -181,7 +193,7 @@ export function Chat({
           messages={messages}
           setMessages={setMessages}
           reload={reload}
-          openCanvas={() => setIsCanvasOpen(true)}
+          openCanvas={openCanvas}
           isReadonly={isReadonly}
           messagesContainerRef={messagesContainerRef}
           messagesEndRef={messagesEndRef}
@@ -190,7 +202,7 @@ export function Chat({
           <SuggestedActions append={append} chatId={id} />
         )}
 
-        <form className={"sticky mx-auto b-0 flex flex-col md:max-w-3xl w-full items-center"}>
+        <form className={"sticky mx-auto b-0 flex flex-col md:max-w-3xl w-full items-center bg-transparent"}>
           <motion.div
             initial="hidden"
             animate={!isInView ? "visible" : "hidden"}
@@ -212,7 +224,7 @@ export function Chat({
             </Button>
           </motion.div>
           {!isReadonly && (
-            <div className={"p-2 pb-0 bg-border rounded-2xl rounded-b-none gap-2 w-full"}>
+            <div className={"p-2 pb-0 bg-border/50 border-foreground/70 backdrop-blur-sm rounded-2xl rounded-b-none gap-2 w-full"}>
               <MultimodalInput
                 chatId={id}
                 input={input}
@@ -238,8 +250,9 @@ export function Chat({
         <Canvas
           key={canvasKey}
           open={isCanvasOpen}
-          onClose={() => setIsCanvasOpen(false)}
+          onClose={closeCanvas}
           chatId={id}
+          initialMode={canvasMode}
         />
       </div>
     </div>

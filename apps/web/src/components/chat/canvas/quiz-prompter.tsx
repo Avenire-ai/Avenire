@@ -12,13 +12,17 @@ import { Markdown } from "../../markdown"
 
 interface Quiz {
   id: string
-  type: string
+  type: "MCQ" | "True/False" | "Image-based" | "Interactive" | "Problem-solving"
   question: string
   options: string[]
   correct: number
   explanation: string
   hint: string
-  difficulty: string
+  difficulty: "beginner" | "intermediate" | "advanced"
+  stepByStepSolution: string
+  commonMistakes: string[]
+  learningObjectives: string[]
+  followUpQuestions?: string[]
   createdAt: Date
 }
 
@@ -56,18 +60,26 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
               question: string;
               difficulty: string;
               explanation: string;
+              stepByStepSolution: string;
+              commonMistakes: string[];
+              learningObjectives: string[];
+              followUpQuestions?: string[];
             }>
           }
 
           return content.questions.map(question => ({
             id: `${quiz.id}-${question.id}`, // Create a unique ID combining parent and question ID
-            type: question.type,
+            type: question.type as "MCQ" | "True/False" | "Image-based" | "Interactive" | "Problem-solving",
             question: question.question,
             options: question.options,
             correct: question.correct,
             explanation: question.explanation,
             hint: question.hint,
-            difficulty: question.difficulty,
+            difficulty: question.difficulty as "beginner" | "intermediate" | "advanced",
+            stepByStepSolution: question.stepByStepSolution,
+            commonMistakes: question.commonMistakes,
+            learningObjectives: question.learningObjectives,
+            followUpQuestions: question.followUpQuestions,
             createdAt: quiz.createdAt
           }))
         })
@@ -332,8 +344,59 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="overflow-hidden border-t pt-6"
+                  className="overflow-hidden border-t pt-6 space-y-6"
                 >
+                  {/* Step by Step Solution */}
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-primary">Step-by-Step Solution</h5>
+                    <div className="text-sm text-muted-foreground leading-relaxed">
+                      <Markdown content={question.stepByStepSolution} id={`quiz-solution-${question.id}`} />
+                    </div>
+                  </div>
+
+                  {/* Common Mistakes */}
+                  {question.commonMistakes.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="font-medium text-primary">Common Mistakes</h5>
+                      <ul className="list-disc list-inside space-y-2">
+                        {question.commonMistakes.map((mistake, index) => (
+                          <li key={index} className="text-sm text-muted-foreground">
+                            <Markdown content={mistake} id={`quiz-mistake-${question.id}-${index}`} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Learning Objectives */}
+                  {question.learningObjectives.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="font-medium text-primary">Learning Objectives</h5>
+                      <ul className="list-disc list-inside space-y-2">
+                        {question.learningObjectives.map((objective, index) => (
+                          <li key={index} className="text-sm text-muted-foreground">
+                            <Markdown content={objective} id={`quiz-objective-${question.id}-${index}`} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Follow-up Questions */}
+                  {question.followUpQuestions && question.followUpQuestions.length > 0 && (
+                    <div className="space-y-3">
+                      <h5 className="font-medium text-primary">Related Questions to Explore</h5>
+                      <ul className="list-disc list-inside space-y-2">
+                        {question.followUpQuestions.map((followUp, index) => (
+                          <li key={index} className="text-sm text-muted-foreground">
+                            <Markdown content={followUp} id={`quiz-followup-${question.id}-${index}`} />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Original Explanation */}
                   <div className="space-y-3">
                     <h5 className="font-medium text-primary">Explanation</h5>
                     <div className="text-sm text-muted-foreground leading-relaxed">

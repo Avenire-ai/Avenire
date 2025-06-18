@@ -34,26 +34,22 @@ export const useGraphStore = create<GraphStore>()(
         ...initialState,
 
         setGraphRef: (ref) => {
-          set({ graphRef: ref })
-          if (ref?.current) {
-            try {
-              ref.current.setExpressions(get().expressions);
-            } catch (error) {
-              set({ error: "Failed to set graph ref" });
-            }
-          }
-
+          set({ graphRef: ref });
         },
 
         addExpression: (expressions) => {
-          const { graphRef } = get();
-          if (graphRef?.current) {
+          const { graphRef, isInitialized } = get();
+
+          // Update store state first
+          set((state) => ({
+            expressions: [...state.expressions, ...expressions],
+            error: null,
+          }));
+
+          // Then update graph if initialized
+          if (isInitialized && graphRef?.current) {
             try {
-              graphRef.current.setExpressions(expressions);
-              set((state) => ({
-                expressions: [...state.expressions, ...expressions],
-                error: null,
-              }));
+              graphRef.current.setExpressions(get().expressions);
             } catch (error) {
               set({ error: "Failed to add expressions" });
             }
@@ -61,11 +57,15 @@ export const useGraphStore = create<GraphStore>()(
         },
 
         clearGraph: () => {
-          const { graphRef } = get();
-          if (graphRef?.current) {
+          const { graphRef, isInitialized } = get();
+
+          // Update store state first
+          set({ expressions: [], error: null });
+
+          // Then update graph if initialized
+          if (isInitialized && graphRef?.current) {
             try {
               graphRef.current.setBlank();
-              set({ expressions: [], error: null });
             } catch (error) {
               set({ error: "Failed to clear graph" });
             }
@@ -73,18 +73,36 @@ export const useGraphStore = create<GraphStore>()(
         },
 
         setExpressions: (expressions) => {
-          const { graphRef } = get();
-          if (graphRef?.current) {
+          const { graphRef, isInitialized } = get();
+
+          // Update store state first
+          set({ expressions, error: null });
+
+          // Then update graph if initialized
+          if (isInitialized && graphRef?.current) {
             try {
               graphRef.current.setExpressions(expressions);
-              set({ expressions, error: null });
             } catch (error) {
               set({ error: "Failed to set expressions" });
             }
           }
         },
 
-        initialize: () => set({ isInitialized: true }),
+        initialize: () => {
+          const { graphRef, expressions } = get();
+
+          if (graphRef?.current) {
+            try {
+              // Set initial expressions if any exist
+              if (expressions.length > 0) {
+                graphRef.current.setExpressions(expressions);
+              }
+              set({ isInitialized: true, error: null });
+            } catch (error) {
+              set({ error: "Failed to initialize graph" });
+            }
+          }
+        },
 
         setError: (error) => set({ error }),
       }),

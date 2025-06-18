@@ -39,5 +39,8 @@ yarn-error.log*
 
 bun.lock
 
+avenire.ai-key.pem
+avenire.ai.pem
+Caddyfile
 # Ignore AI prompt files
 packages/ai/prompts/*

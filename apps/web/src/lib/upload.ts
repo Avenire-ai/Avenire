@@ -6,7 +6,27 @@ export const router = {
     image: {
       maxFileSize: '4MB',
       maxFileCount: 5,
-    }
+    },
+    pdf: {
+      maxFileSize: '4MB',
+      maxFileCount: 3,
+    },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+      maxFileSize: '4MB',
+      maxFileCount: 3,
+    },
+    "text/markdown": {
+      maxFileSize: '4MB',
+      maxFileCount: 3,
+    },
+    text: {
+      maxFileSize: '4MB',
+      maxFileCount: 3,
+    },
+    "text/csv": {
+      maxFileSize: '4MB',
+      maxFileCount: 3,
+    },
   })
     .middleware(async ({ req }) => {
       const data = await auth.api.getSession({

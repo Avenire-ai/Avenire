@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Home, BookOpen, Trash, Settings, ChevronDown, LogOut, User2 } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { Home, BookOpen, Trash, Settings, ChevronDown, LogOut, User2, Layout, Pyramid } from "lucide-react"
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -25,6 +26,9 @@ import { getRecentChats } from "../actions/actions"
 import { signOut } from "@avenire/auth/client"
 import useSWR from 'swr';
 import Image from "next/image"
+import { useCanvasStore } from "../stores/canvasStore"
+import { Button } from "@avenire/ui/components/button";
+import { AnimatePresence, motion } from "motion/react"
 
 const menuItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -36,6 +40,9 @@ export function Sidebar() {
   const [activeItem, setActiveItem] = useState("Home")
   const { open, isMobile } = useSidebar()
   const { user } = useUserStore();
+  const pathname = usePathname();
+  const isChatPage = pathname?.startsWith('/chat');
+  const { openCanvas } = useCanvasStore();
 
   const { data: recentChatsData } = useSWR(
     user?.id ? '/api/history' : null,
@@ -55,8 +62,28 @@ export function Sidebar() {
 
   return (
     <>
-      <div className={!isMobile ? "absolute left-3 top-3 z-50 p-2 rounded-lg bg-sidebar" : "visibility-hidden"}>
+      <div className={!isMobile ? "absolute left-3 top-3 z-50 p-2 rounded-lg bg-sidebar transition-all flex flex-row gap-2" : "visibility-hidden"}>
         <SidebarTrigger />
+        <AnimatePresence>
+          {!open && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Button
+                size={"icon"}
+                variant={"ghost"}
+                className={"h-7 w-7"}
+                onClick={() => { openCanvas('flashcards') }}
+              >
+                <Pyramid />
+                <span className="sr-only">Toggle Canvas</span>
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <ShadcnSidebar className="flex-grow">
         <SidebarHeader className="flex items-center justify-center px-4 py-4">
@@ -92,6 +119,18 @@ export function Sidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                {isChatPage && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="cursor-pointer"
+                      onClick={() => openCanvas('flashcards')}
+                      tooltip={!open ? "Open Canvas" : undefined}
+                    >
+                      <Layout className="h-4 w-4" />
+                      {open && <span className="ml-2">Open Canvas</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

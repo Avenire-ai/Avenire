@@ -5,6 +5,7 @@ import { Overview } from './overview';
 import { memo, RefObject } from 'react';
 import equal from 'fast-deep-equal';
 import { UseChatHelpers } from '@ai-sdk/react';
+import { type Mode } from './canvas/canvas';
 
 interface MessagesProps {
   chatId: string;
@@ -16,7 +17,7 @@ interface MessagesProps {
   messagesContainerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   isReadonly: boolean;
-  openCanvas: () => void;
+  openCanvas: (mode?: Mode) => void;
 }
 
 function PureMessages({

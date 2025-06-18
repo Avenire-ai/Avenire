@@ -42,9 +42,9 @@ const useCalculatorHook = (theme: string) => {
   const darkTheme = (osf: any) => {
     graphRef.current?.updateSettings({
       //@ts-expect-error
-      backgroundColor: "#101010",
+      backgroundColor: "#070707",
       settingsMenu: false,
-      textColor: "#F9F8FC"
+      textColor: "#fafafa"
     })
     const gridLinesColor = (opacity: number) => `rgba(237, 237, 237, ${opacity})`;
 
@@ -137,11 +137,14 @@ export function GraphImage({ expressions }: { expressions: Desmos.ExpressionStat
 export function GraphComp() {
   const { theme } = useTheme()
   const { graphRef, init } = useCalculatorHook(theme || "dark")
-  const { setGraphRef } = useGraphStore()
+  const { setGraphRef, initialize } = useGraphStore()
 
   useEffect(() => {
-    setGraphRef(graphRef)
-    init()
+    if (graphRef?.current) {
+      setGraphRef(graphRef)
+      init()
+      initialize()
+    }
   }, [graphRef])
 
   return (

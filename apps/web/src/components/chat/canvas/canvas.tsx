@@ -18,15 +18,21 @@ interface CanvasProps {
   // Add callback to notify parent about dock state
   onOpenChange?: (open: boolean) => void
   chatId: string // Add chatId prop
+  initialMode?: Mode // Add initialMode prop
 }
 
-type Mode = "flashcards" | "whiteboard" | "graph" | "quiz"
+export type Mode = "flashcards" | "whiteboard" | "graph" | "quiz"
 
 const DOCK_WIDTH = 450 // Fixed width in pixels
 
-export function Canvas({ open, onClose, children, onOpenChange, chatId }: CanvasProps) {
+export function Canvas({ open, onClose, children, onOpenChange, chatId, initialMode = "flashcards" }: CanvasProps) {
   const isMobile = useMobile()
-  const [activeMode, setActiveMode] = useState<Mode>("flashcards")
+  const [activeMode, setActiveMode] = useState<Mode>(initialMode)
+
+  // Update activeMode when initialMode changes
+  useEffect(() => {
+    setActiveMode(initialMode)
+  }, [initialMode])
 
   // Notify parent when dock opens/closes
   useEffect(() => {

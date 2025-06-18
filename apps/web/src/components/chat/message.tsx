@@ -3,7 +3,7 @@
 import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useEffect, useRef, useState } from 'react';
-import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle } from 'lucide-react';
+import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle, GitBranch } from 'lucide-react';
 import { Markdown } from '../markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
@@ -19,9 +19,17 @@ import { useGraphStore } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
 import { deleteTrailingMessages } from '../../actions/actions';
+import { Canvas, type Mode } from './canvas/canvas';
 
 const GraphImage = dynamic(
   () => import("../graph/desmos").then((mod) => mod.GraphImage),
+  {
+    ssr: false,
+  }
+);
+
+const MermaidDiagram = dynamic(
+  () => import("../mermaid").then((mod) => mod.MermaidDiagram),
   {
     ssr: false,
   }
@@ -71,19 +79,19 @@ const PurePreviewMessage = ({
   setMessages: UseChatHelpers['setMessages'];
   error: UseChatHelpers['error'];
   reload: UseChatHelpers['reload'];
-  openCanvas: () => void
+  openCanvas: (mode?: Mode) => void
   isReadonly: boolean;
 }) => {
   const { data: dataStream, messages } = useChat({
     id: chatId
   });
   const [researchData, setResearchData] = useState<Array<any>>([])
-  const { addExpression } = useGraphStore()
+  const { addExpression, clearGraph } = useGraphStore()
 
   const handleDeleteTrailing = async () => {
     try {
       const result = await deleteTrailingMessages({
-        id: message.id,
+        id: messages.at(-2)?.id || message.id,
       });
       if (result.success) {
         reload();
@@ -132,7 +140,7 @@ const PurePreviewMessage = ({
               </CardHeader>
               <CardContent className="text-sm text-destructive/80">
                 <p>Technical details (for support):</p>
-                <code className="block mt-1 p-2 bg-destructive/5 rounded text-xs owrap-break-word">
+                <code className="block mt-1 p-2 bg-destructive/5 rounded text-xs wrap-break-word">
                   {error.name}: {error.message}
                 </code>
               </CardContent>
@@ -218,7 +226,7 @@ const PurePreviewMessage = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={openCanvas}
+                                onClick={() => openCanvas("flashcards")}
                                 className="w-full transition-colors"
                               >
                                 <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
@@ -244,7 +252,7 @@ const PurePreviewMessage = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={openCanvas}
+                                onClick={() => openCanvas("quiz")}
                                 className="w-full transition-colors"
                               >
                                 <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
@@ -261,13 +269,30 @@ const PurePreviewMessage = ({
                             variant="outline"
                             size="sm"
                             onClick={() => {
+                              clearGraph()
                               addExpression(args.expressions);
-                              openCanvas();
+                              openCanvas("graph");
                             }}
                             className="transition-colors"
                           >
                             <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
                           </Button>
+                        </div>
+                      );
+                    case "mermaidTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <GitBranch className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Generating Diagram</CardTitle>
+                              </div>
+                              <CardDescription>
+                                Creating a {args.diagramType} diagram based on your request
+                              </CardDescription>
+                            </CardHeader>
+                          </Card>
                         </div>
                       );
                     default:
@@ -296,7 +321,7 @@ const PurePreviewMessage = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={openCanvas}
+                                onClick={() => openCanvas("flashcards")}
                                 className="w-full transition-colors"
                               >
                                 <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
@@ -322,7 +347,7 @@ const PurePreviewMessage = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={openCanvas}
+                                onClick={() => openCanvas("quiz")}
                                 className="w-full transition-colors"
                               >
                                 <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
@@ -344,12 +369,34 @@ const PurePreviewMessage = ({
                             size="sm"
                             onClick={() => {
                               addExpression(args.expressions);
-                              openCanvas();
+                              openCanvas("graph");
                             }}
                             className="transition-colors"
                           >
                             <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
                           </Button>
+                        </div>
+                      );
+                    case "mermaidTool":
+                      return (
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <Card className="w-full">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center gap-2">
+                                <GitBranch className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">Diagram Generated</CardTitle>
+                              </div>
+                              <CardDescription>
+                                {args.diagramType} diagram based on your request
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <MermaidDiagram
+                                chart={result}
+                                onRetry={() => reload()}
+                              />
+                            </CardContent>
+                          </Card>
                         </div>
                       );
                     default:

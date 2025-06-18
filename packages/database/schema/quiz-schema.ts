@@ -7,7 +7,22 @@ export const quizzes = pgTable("quizzes", {
   userId: text("user_id").notNull().references(() => user.id),
   chatId: text("chat_id").references(() => chat.id),
   topic: text("topic").notNull(),
-  content: jsonb("content").notNull(),
+  content: jsonb("content").notNull().$type<{
+    questions: Array<{
+      id: number;
+      type: "MCQ" | "True/False" | "Image-based" | "Interactive" | "Problem-solving";
+      question: string;
+      options: string[];
+      correct: number;
+      explanation: string;
+      hint: string;
+      difficulty: "beginner" | "intermediate" | "advanced";
+      stepByStepSolution: string;
+      commonMistakes: string[];
+      learningObjectives: string[];
+      followUpQuestions?: string[];
+    }>;
+  }>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 })
