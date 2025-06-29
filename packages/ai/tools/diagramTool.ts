@@ -3,7 +3,7 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { fermion } from "../models";
 
-const mermaidSchema = z.object({
+const diagramToolSchema = z.object({
   prompt: z.string().describe(
     `A description of the diagram to generate. The prompt should describe:
     1. The type of diagram (preferably flowchart, sequence, or class diagram)
@@ -25,10 +25,10 @@ const mermaidSchema = z.object({
     "gantt",
     "pie",
     "gitGraph"
-  ]).describe("The type of mermaid diagram to generate. Prefer flowchart, sequence, or class diagrams for most use cases."),
+  ]).describe("The type of diagram to generate. Prefer flowchart, sequence, or class diagrams for most use cases."),
 });
 
-function extractMermaidCode(text: string): string {
+function extractDiagramCode(text: string): string {
   const match = text.match(/```mermaid\n([\s\S]*?)```/);
   if (match && match[1]) {
     return match[1].trim();
@@ -36,11 +36,11 @@ function extractMermaidCode(text: string): string {
   return text.trim();
 }
 
-export const mermaidTool = tool({
-  description: "A tool for generating Mermaid diagram code based on a text prompt. Always use this tool whenever a diagram or visualization would help explain concepts, processes, or relationships. The tool primarily supports flowcharts, sequence diagrams, and class diagrams, which are most commonly used for visualizing software systems and processes.",
-  parameters: mermaidSchema,
+export const diagramTool = tool({
+  description: "A tool for generating Mermaid diagram code based on a text prompt. ALWAYS use this tool whenever a diagram or visualization would help explain concepts, processes, or relationships. The tool primarily supports flowcharts, sequence diagrams, and class diagrams, which are most commonly used for visualizing software systems and processes.",
+  parameters: diagramToolSchema,
   execute: async ({ prompt, diagramType }) => {
-    let mermaidCode = '';
+    let diagramCode = '';
 
     const { text } = await generateText({
       model: fermion.languageModel("fermion-core"),
@@ -53,15 +53,17 @@ export const mermaidTool = tool({
         5. Ensure the diagram is clear and well-structured
         6. Only output the Mermaid code, no explanations
         7. Prefer flowchart, sequence, or class diagrams unless specifically requested otherwise
-        
+        8. Never use parentheses (), square brackets [], curly braces {}, pipes ||  in node names or labels as they can block up the Mermaid syntax
+        9. The code need not have comments.
+ 
         For ${diagramType} diagrams specifically:
         ${getDiagramTypeInstructions(diagramType)}`,
       prompt: `Generate a ${diagramType} diagram for: ${prompt}`,
     });
 
-    mermaidCode = extractMermaidCode(text);
+    diagramCode = extractDiagramCode(text);
 
-    return mermaidCode;
+    return diagramCode;
   },
 });
 
@@ -110,4 +112,4 @@ function getDiagramTypeInstructions(diagramType: string): string {
     default:
       return "";
   }
-}
+} 

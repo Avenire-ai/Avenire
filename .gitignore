@@ -42,9 +42,9 @@ bun.lock
 avenire.ai-key.pem
 avenire.ai.pem
 Caddyfile
-mastra.db
-mastra.db-shm
-mastra.db-wal
 
 # Ignore AI prompt files
 packages/ai/prompts/*
+
+drizzle
+dr

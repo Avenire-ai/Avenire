@@ -3,7 +3,7 @@
 import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useEffect, useRef, useState } from 'react';
-import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle, GitBranch } from 'lucide-react';
+import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle } from 'lucide-react';
 import { Markdown } from '../markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
@@ -23,13 +23,6 @@ import { Canvas, type Mode } from './canvas/canvas';
 
 const GraphImage = dynamic(
   () => import("../graph/desmos").then((mod) => mod.GraphImage),
-  {
-    ssr: false,
-  }
-);
-
-const MermaidDiagram = dynamic(
-  () => import("../mermaid").then((mod) => mod.MermaidDiagram),
   {
     ssr: false,
   }
@@ -259,22 +252,6 @@ const PurePreviewMessage = ({
                           </Button>
                         </div>
                       );
-                    case "mermaidTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <GitBranch className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Generating Diagram</CardTitle>
-                              </div>
-                              <CardDescription>
-                                Creating a {args.diagramType} diagram based on your request
-                              </CardDescription>
-                            </CardHeader>
-                          </Card>
-                        </div>
-                      );
                     default:
                       break;
                   }
@@ -358,28 +335,8 @@ const PurePreviewMessage = ({
                           </Button>
                         </div>
                       );
-                    case "mermaidTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <GitBranch className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Diagram Generated</CardTitle>
-                              </div>
-                              <CardDescription>
-                                {args.diagramType} diagram based on your request
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <MermaidDiagram
-                                chart={result}
-                                onRetry={() => reload()}
-                              />
-                            </CardContent>
-                          </Card>
-                        </div>
-                      );
+                    case "diagramTool":
+                      return null;
                     default:
                       break;
                   }

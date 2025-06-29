@@ -8,6 +8,14 @@ import { Table, TableHeader, TableRow, TableHead, TableCell, TableBody } from "@
 import { Separator } from "@avenire/ui/components/separator"
 import "katex/dist/katex.min.css"
 import { cn } from "@avenire/ui/lib/utils"
+import dynamic from "next/dynamic"
+
+const MermaidDiagram = dynamic(
+  () => import("./mermaid").then((mod) => mod.MermaidDiagram),
+  {
+    ssr: false,
+  }
+);
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
@@ -17,6 +25,19 @@ function parseMarkdownIntoBlocks(markdown: string): string[] {
 const Code = (props: any) => {
   const { children, className, node, ...rest } = props;
   const match = /language-(\w+)/.exec(className || "");
+
+  // Check if this is a Mermaid code block
+  if (match && match[1].toLowerCase() === 'mermaid') {
+    return (
+      <div className="my-4">
+        <MermaidDiagram
+          chart={children as string}
+          containerHeight={400}
+          containerWidth={800}
+        />
+      </div>
+    );
+  }
 
   return match ? (
     <div className="overflow-scroll">

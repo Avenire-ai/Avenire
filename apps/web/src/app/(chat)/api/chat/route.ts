@@ -7,10 +7,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { quizGeneratorTool } from "@avenire/ai/tools/quiz-generator"
 import { flashcardGeneratorTool } from "@avenire/ai/tools/flashcard-generator"
-import { mermaidTool } from "@avenire/ai/tools/mermaid"
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { LibSQLStore } from "@mastra/libsql";
+import { diagramTool } from "@avenire/ai/tools/diagramTool"
 import { type CanvasData } from "../../../../lib/canvas_types";
 
 function formatCanvasData(data: CanvasData,
@@ -130,7 +127,7 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "mermaidTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "mermaidTool"]
+    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "diagramTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "diagramTool"]
 
 
     const instructions = deepResearchEnabled
@@ -147,10 +144,10 @@ export async function POST(req: Request) {
 
     return createDataStreamResponse({
       execute: async (dataStream) => {
-        const chatAgent = new Agent({
-          name: "Fermion",
-          instructions,
+        const result = streamText({
           model: thinkingEnabled ? reasoningModel : model,
+          system: instructions,
+          messages,
           tools: {
             graphTool,
             quizGeneratorTool: quizGeneratorTool({
@@ -165,18 +162,8 @@ export async function POST(req: Request) {
               dataStream,
               model: reasoningModel
             }),
-            mermaidTool,
+            diagramTool,
           },
-          memory: new Memory({
-            storage: new LibSQLStore({
-              url: "file:../mastra.db", // Or your database URL
-            }),
-          })
-        })
-
-        const agentStream = await chatAgent.stream(messages.at(-1)?.content || "", {
-          threadId: chatId,
-          resourceId: session.user.id,
           maxSteps: 5,
           experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
@@ -219,15 +206,11 @@ export async function POST(req: Request) {
           }
         })
 
-        agentStream.consumeStream();
+        result.consumeStream();
 
-        agentStream.mergeIntoDataStream(dataStream, {
+        result.mergeIntoDataStream(dataStream, {
           sendReasoning: true,
-        })
-
-        // result.mergeIntoDataStream(dataStream, {
-        //   sendReasoning: true,
-        // });
+        });
       },
       onError: (error) => {
         console.error(error)

@@ -525,10 +525,7 @@ function PureAttachmentsButton({
     <Button
       data-testid="attachments-button"
       onClick={(event) => {
-        console.log("Attatchment Trial?")
         event.preventDefault();
-        console.log("Prevented")
-        fileInputRef.current?.click();
       }}
       size="icon"
       disabled={status !== 'ready'}
