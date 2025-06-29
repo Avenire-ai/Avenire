@@ -2,29 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle, XCircle, RotateCcw, Trophy, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react"
+import { Sparkles, CheckCircle, XCircle, RotateCcw, Trophy, ChevronLeft, ChevronRight, Lightbulb } from "lucide-react"
 import { Button } from "@avenire/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@avenire/ui/components/select"
 import { Badge } from "@avenire/ui/components/badge"
 import { Card, CardContent } from "@avenire/ui/components/card"
 import { getQuizzesForChat } from "../../../actions/actions"
 import { Markdown } from "../../markdown"
-
-interface Quiz {
-  id: string
-  type: "MCQ" | "True/False" | "Image-based" | "Interactive" | "Problem-solving"
-  question: string
-  options: string[]
-  correct: number
-  explanation: string
-  hint: string
-  difficulty: "beginner" | "intermediate" | "advanced"
-  stepByStepSolution: string
-  commonMistakes: string[]
-  learningObjectives: string[]
-  followUpQuestions?: string[]
-  createdAt: Date
-}
+import { type Quiz } from "../../../lib/canvas_types"
+import { useCanvasStore } from "../../../stores/canvasStore"
 
 interface QuizPrompterProps {
   chatId: string
@@ -42,6 +28,7 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
   const [selectedType, setSelectedType] = useState("All")
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { setCurrentQuestion: setCurrentQuestionStore } = useCanvasStore()
 
   useEffect(() => {
     const fetchQuizzes = async () => {
@@ -118,6 +105,7 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
       setShowExplanation(false)
       setShowHint(false)
       setAnswered(false)
+      setCurrentQuestionStore(quizzes[currentQuestion + 1])
     } else {
       setIsComplete(true)
     }
@@ -130,6 +118,7 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
       setShowExplanation(false)
       setShowHint(false)
       setAnswered(false)
+      setCurrentQuestionStore(quizzes[currentQuestion - 1])
     }
   }
 
@@ -267,8 +256,8 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
             {/* Question Header */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                  <span className="text-xs font-bold text-primary-foreground">{currentQuestion + 1}</span>
+                <div className="w-6 h-6 rounded flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary"><Sparkles className="w-6 h-6"/></span>
                 </div>
                 <span className="text-sm font-medium">Problem {question.id}</span>
               </div>

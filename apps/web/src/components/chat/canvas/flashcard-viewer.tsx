@@ -11,15 +11,9 @@ import { useIsMobile as useMobile } from "@avenire/ui/src/hooks/use-mobile"
 import { Card, CardContent } from "@avenire/ui/components/card"
 import { getFlashcardsForChat } from "../../../actions/actions"
 import { Markdown } from "../../markdown"
+import { type Flashcard } from "../../../lib/canvas_types"
+import { useCanvasStore } from "../../../stores/canvasStore"
 
-interface Flashcard {
-  id: string
-  question: string
-  answer: string
-  topic: string
-  difficulty: string
-  createdAt: Date
-}
 
 interface FlashcardViewerProps {
   chatId: string
@@ -34,6 +28,7 @@ export function FlashcardViewer({ chatId }: FlashcardViewerProps) {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const isMobile = useMobile()
+  const { setCurrentFlashcard: setCurrentFlashcardStore } = useCanvasStore()
 
   const x = useMotionValue(0)
   const rotateY = useTransform(x, [-200, 0, 200], [-10, 0, 10])
@@ -91,6 +86,7 @@ export function FlashcardViewer({ chatId }: FlashcardViewerProps) {
       setDirection(1)
       setCurrentIndex(safeCurrentIndex + 1)
       setIsFlipped(false)
+      setCurrentFlashcardStore(filteredCards[safeCurrentIndex + 1])
     }
   }
 
@@ -99,6 +95,7 @@ export function FlashcardViewer({ chatId }: FlashcardViewerProps) {
       setDirection(-1)
       setCurrentIndex(safeCurrentIndex - 1)
       setIsFlipped(false)
+      setCurrentFlashcardStore(filteredCards[safeCurrentIndex - 1])
     }
   }
 

@@ -15,7 +15,7 @@ import ResearchDisplay from './deepresearch-display';
 import dynamic from "next/dynamic"
 import { Button } from '@avenire/ui/src/components/button';
 import { LineChart } from "lucide-react"
-import { useGraphStore } from '../../stores/graphStore';
+import { useGraphStore, clearGraphOnNewMessage } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
 import { deleteTrailingMessages } from '../../actions/actions';
@@ -212,52 +212,32 @@ const PurePreviewMessage = ({
                     case "flashcardGeneratorTool":
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
+                          <Card className="w-full animate-pulse">
                             <CardHeader className="pb-2">
                               <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Flashcards Generated</CardTitle>
+                                <BookOpen className="h-4 w-4 text-primary animate-bounce" />
+                                <CardTitle className="text-base">Generating Flashcards...</CardTitle>
                               </div>
                               <CardDescription>
-                                Click to view the flashcards in the canvas
+                                The AI is preparing your flashcards. Please wait.
                               </CardDescription>
                             </CardHeader>
-                            <CardFooter>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openCanvas("flashcards")}
-                                className="w-full transition-colors"
-                              >
-                                <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
-                              </Button>
-                            </CardFooter>
                           </Card>
                         </div>
                       );
                     case "quizGeneratorTool":
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
+                          <Card className="w-full animate-pulse">
                             <CardHeader className="pb-2">
                               <div className="flex items-center gap-2">
-                                <HelpCircle className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Quiz Generated</CardTitle>
+                                <HelpCircle className="h-4 w-4 text-primary animate-bounce" />
+                                <CardTitle className="text-base">Generating Quiz...</CardTitle>
                               </div>
                               <CardDescription>
-                                Click to take the quiz in the canvas
+                                The AI is preparing your quiz. Please wait.
                               </CardDescription>
                             </CardHeader>
-                            <CardFooter>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openCanvas("quiz")}
-                                className="w-full transition-colors"
-                              >
-                                <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
-                              </Button>
-                            </CardFooter>
                           </Card>
                         </div>
                       );
@@ -269,7 +249,7 @@ const PurePreviewMessage = ({
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              clearGraph()
+                              clearGraphOnNewMessage();
                               addExpression(args.expressions);
                               openCanvas("graph");
                             }}
@@ -368,6 +348,7 @@ const PurePreviewMessage = ({
                             variant="outline"
                             size="sm"
                             onClick={() => {
+                              clearGraphOnNewMessage();
                               addExpression(args.expressions);
                               openCanvas("graph");
                             }}

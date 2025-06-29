@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 import { useDropzone } from 'react-dropzone';
 
-import { ArrowUpIcon, Brain, Globe, Italic, PaperclipIcon, RotateCcw, Square, Loader2 } from 'lucide-react';
+import { ArrowUpIcon, Brain, Globe, Italic, PaperclipIcon, RotateCcw, Square, Loader2, Search, StopCircle } from 'lucide-react';
 import { PreviewAttachment, Attachment } from './preview-attachment';
 import { Button } from '@avenire/ui/components/button';
 import { Textarea } from '@avenire/ui/components/textarea';
@@ -27,7 +27,7 @@ import { useUploadThing } from '../../lib/uploadClient';
 import { v4 as uuid } from "uuid"
 import { deleteFile, deleteTrailingMessages } from '../../actions/actions';
 import { AnimatePresence, motion } from 'motion/react';
-import { Toggle } from "@avenire/ui/components/toggle"
+import { ToggleGroup, ToggleGroupItem } from "@avenire/ui/components/toggle-group"
 import { useWhiteboardStore } from "../../stores/whiteboardStore";
 import { exportToBlob } from '@excalidraw/excalidraw';
 
@@ -71,13 +71,10 @@ function PureMultimodalInput({
   attachments,
   setAttachments,
   setData,
-  researchEnabled,
-  thinkingEnabled,
-  toggleResearch,
   messages,
   reload,
-  toggleThinking,
-  setMessages,
+  selectedMode,
+  setSelectedMode,
   handleSubmit,
   className,
 }: {
@@ -86,11 +83,9 @@ function PureMultimodalInput({
   setInput: UseChatHelpers['setInput'];
   setData: UseChatHelpers['setData'];
   status: UseChatHelpers['status'];
-  researchEnabled: boolean;
-  thinkingEnabled: boolean;
   stop: () => void;
-  toggleThinking: () => void;
-  toggleResearch: () => void;
+  selectedMode: string;
+  setSelectedMode: (mode: string) => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: Array<UIMessage>;
@@ -389,7 +384,6 @@ function PureMultimodalInput({
         multiple
         onChange={handleFileChange}
         tabIndex={-1}
-        {...getInputProps()}
       />
 
       <AnimatePresence>
@@ -442,44 +436,67 @@ function PureMultimodalInput({
               }
             }}
           />
-          <div className="flex flex-row p-2 gap-2">
-            <div className="w-fit flex flex-row justify-start">
+          <div className="w-fit flex flex-row justify-start">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{ display: 'contents' }}
+            >
               <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             </div>
+          </div>
 
-            <div className="w-fit flex flex-row justify-end">
-              <SendButton
-                input={input}
-                submitForm={submitForm}
-                uploadQueue={uploadQueue}
-                status={status}
-                reload={reload}
-                messages={messages}
-              />
-            </div>
+          <div className="w-fit flex flex-row justify-end">
+            <SendButton
+              input={input}
+              stop={stop}
+              submitForm={submitForm}
+              uploadQueue={uploadQueue}
+              status={status}
+              reload={reload}
+              messages={messages}
+            />
           </div>
         </div>
         <div className="flex flex-row gap-2 p-2">
-          <Toggle
+          <ToggleGroup
+            type="single"
+            value={selectedMode}
+            onValueChange={(value) => value && setSelectedMode(value)}
             size="sm"
-            aria-label="Toggle Thinking"
-            disabled={researchEnabled}
-            onClick={toggleThinking}
-            className="transition-colors"
+            variant="outline"
+            className="border rounded-lg p-1"
           >
-            <Brain className="h-4 w-4" />
-            Thinking
-          </Toggle>
-          <Toggle
-            size="sm"
-            aria-label="Toggle Deep Research"
-            disabled={thinkingEnabled}
-            onClick={toggleResearch}
-            className="transition-colors"
-          >
-            <Globe className="h-4 w-4" />
-            Deep Research
-          </Toggle>
+            <ToggleGroupItem
+              value="thinking"
+              aria-label="Toggle thinking mode"
+              className="text-xs px-3 py-1.5 h-auto"
+              onClick={() => {
+                if (selectedMode === "thinking") {
+                  setSelectedMode("")
+                } else {
+                  setSelectedMode("thinking")
+                }
+              }}
+            >
+              <Brain className="h-3 w-3 mr-1.5" />
+              Thinking
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="research"
+              aria-label="Toggle deep research mode"
+              className="text-xs px-3 py-1.5 h-auto"
+              onClick={() => {
+                if (selectedMode === "research") {
+                  setSelectedMode("")
+                } else {
+                  setSelectedMode("research")
+                }
+              }}
+            >
+              <Search className="h-3 w-3 mr-1.5" />
+              Deep Research
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
     </div>
@@ -508,12 +525,15 @@ function PureAttachmentsButton({
     <Button
       data-testid="attachments-button"
       onClick={(event) => {
+        console.log("Attatchment Trial?")
         event.preventDefault();
+        console.log("Prevented")
         fileInputRef.current?.click();
       }}
       size="icon"
       disabled={status !== 'ready'}
       variant="ghost"
+      type="button"
       className="transition-colors"
     >
       <PaperclipIcon className="h-4 w-4" />
@@ -530,15 +550,17 @@ function PureSendButton({
   status,
   reload,
   messages,
+  stop,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
   status: UseChatHelpers['status'];
+  stop: () => void;
   reload: UseChatHelpers['reload'];
   messages: Array<UIMessage>;
 }) {
-  if (status === 'error' || messages.at(-1)?.role === "user") {
+  if (status === 'error' && messages.at(-1)?.role === "user") {
     return (
       <Button
         data-testid="reload-button"
@@ -577,10 +599,10 @@ function PureSendButton({
         data-testid="loading-button"
         size="icon"
         variant="ghost"
-        disabled
         className="transition-colors"
+        onClick={stop}
       >
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <StopCircle />
       </Button>
     );
   }

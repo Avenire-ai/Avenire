@@ -59,7 +59,6 @@ export function PureMessageActions({
         console.error('Failed to delete trailing messages:', error);
       }
     }
-    reload();
   };
 
   return (

@@ -8,6 +8,59 @@ import { v4 as uuid } from "uuid";
 import { quizGeneratorTool } from "@avenire/ai/tools/quiz-generator"
 import { flashcardGeneratorTool } from "@avenire/ai/tools/flashcard-generator"
 import { mermaidTool } from "@avenire/ai/tools/mermaid"
+import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/memory";
+import { LibSQLStore } from "@mastra/libsql";
+import { type CanvasData } from "../../../../lib/canvas_types";
+
+function formatCanvasData(data: CanvasData,
+): string {
+  const formatDate = (d: Date) => new Date(d).toISOString();
+
+  if (data.type === 'flashcard') {
+    return [
+      'The user is currently viewing the following flashcard.',
+      'If the user refers to "this flashcard" or "the current flashcard", they mean the one described below.',
+      `Topic: ${data.flashcard.topic}`,
+      `Difficulty: ${data.flashcard.difficulty}`,
+      `Created At: ${formatDate(data.flashcard.createdAt)}`,
+      `Question: ${data.flashcard.question}`,
+      `Answer: ${data.flashcard.answer}`
+    ].join('\n');
+  }
+
+  if (data.type === 'quiz') {
+    return [
+      'The user is currently viewing a quiz question.',
+      'If the user says "this question" or "current question", they are referring to the one shown below.',
+      `Type: ${data.question.type}`,
+      `Difficulty: ${data.question.difficulty}`,
+      `Created At: ${formatDate(data.question.createdAt)}`,
+      `Question: ${data.question.question}`,
+      `Options:\n${data.question.options.map((opt, i) => `${i}: ${opt}`).join('\n')}`,
+      `Correct Option Index: ${data.question.correct}`,
+      `Hint: ${data.question.hint}`,
+      `Explanation: ${data.question.explanation}`,
+      `Step-by-Step Solution: ${data.question.stepByStepSolution}`,
+      `Common Mistakes:\n${data.question.commonMistakes.join('\n')}`,
+      `Learning Objectives:\n${data.question.learningObjectives.join('\n')}`,
+      data.question.followUpQuestions?.length
+        ? `Follow-Up Questions:\n${data.question.followUpQuestions.join('\n')}`
+        : ''
+    ].join('\n');
+  }
+
+  if (data.type === 'graph' && data.expressions.length > 0) {
+    return [
+      'The user is currently viewing a graph canvas.',
+      'If they mention "the current graph", "these graphs", or similar, they are referring to the following expressions:',
+      data.expressions.map(expr => `- ${expr}`).join('\n')
+    ].join('\n');
+  }
+
+  return '';
+}
+
 
 export const maxDuration = 60;
 
@@ -18,20 +71,17 @@ export async function POST(req: Request) {
       chatId,
       selectedModel,
       selectedReasoningModel,
-      currentPlots,
       thinkingEnabled,
-      deepResearchEnabled
+      deepResearchEnabled,
+      canvasData,
     }: {
       messages: Message[];
       chatId: string;
       selectedModel: "fermion-sprint" | "fermion-core" | "fermion-apex";
       selectedReasoningModel: "fermion-reasoning" | "fermion-reasoning-lite";
-      currentPlots: Array<{
-        id: string;
-        latex: string;
-      }> | undefined;
       thinkingEnabled: false;
       deepResearchEnabled: false;
+      canvasData?: CanvasData[];
     } = await req.json()
     const session = await auth.api.getSession({
       headers: req.headers
@@ -77,21 +127,30 @@ export async function POST(req: Request) {
       model = fermion.languageModel(selectedModel);
       reasoningModel = fermion.languageModel(selectedReasoningModel);
     } catch (error) {
-      model = fermion.languageModel("fermion-core")
+      model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
     const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "mermaidTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "mermaidTool"]
 
+
+    const instructions = deepResearchEnabled
+      ? DEEP_RESEARCH_PROMPT(session.user.name)
+      : ATLAS_PROMPT(
+        session.user.name,
+        Array.isArray(canvasData)
+          ? canvasData.map(formatCanvasData).join('\n')
+          : canvasData
+            ? formatCanvasData(canvasData)
+            : ""
+      );
+
+
     return createDataStreamResponse({
-      execute: (dataStream) => {
-        const result = streamText({
+      execute: async (dataStream) => {
+        const chatAgent = new Agent({
+          name: "Fermion",
+          instructions,
           model: thinkingEnabled ? reasoningModel : model,
-          system: deepResearchEnabled ? DEEP_RESEARCH_PROMPT(session.user.name) : ATLAS_PROMPT(session.user.name, currentPlots),
-          messages,
-          maxSteps: 5,
-          experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
-          experimental_transform: smoothStream({ chunking: 'word' }),
-          experimental_generateMessageId: uuid,
           tools: {
             graphTool,
             quizGeneratorTool: quizGeneratorTool({
@@ -108,6 +167,20 @@ export async function POST(req: Request) {
             }),
             mermaidTool,
           },
+          memory: new Memory({
+            storage: new LibSQLStore({
+              url: "file:../mastra.db", // Or your database URL
+            }),
+          })
+        })
+
+        const agentStream = await chatAgent.stream(messages.at(-1)?.content || "", {
+          threadId: chatId,
+          resourceId: session.user.id,
+          maxSteps: 5,
+          experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
+          experimental_transform: smoothStream({ chunking: 'word' }),
+          experimental_generateMessageId: uuid,
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
@@ -146,11 +219,15 @@ export async function POST(req: Request) {
           }
         })
 
-        result.consumeStream();
+        agentStream.consumeStream();
 
-        result.mergeIntoDataStream(dataStream, {
+        agentStream.mergeIntoDataStream(dataStream, {
           sendReasoning: true,
-        });
+        })
+
+        // result.mergeIntoDataStream(dataStream, {
+        //   sendReasoning: true,
+        // });
       },
       onError: (error) => {
         console.error(error)

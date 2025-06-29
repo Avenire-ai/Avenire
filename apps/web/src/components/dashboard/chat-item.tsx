@@ -23,10 +23,11 @@ function formatDate(date: Date) {
 
 interface ChatHistoryItemProps {
   chat: {
-    id: number
-    title: string
-    messageCount: number
-    createdAt: Date
+    id: string;
+    createdAt: Date;
+    title: string;
+    userId: string;
+    visibility: "public" | "private";
   }
 }
 

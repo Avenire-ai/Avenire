@@ -5,85 +5,73 @@ import { CourseCard, CourseCardSkeleton } from "../../../components/dashboard/co
 import { Button } from "@avenire/ui/components/button"
 import { ChatHistoryItem } from "../../../components/dashboard/chat-item"
 import { PlusCircle, ChevronRight } from "lucide-react"
+import useSWR from "swr"
+import { getRecentChats } from "../../../actions/actions" // Adjust path as needed
+import { useUserStore } from "../../../stores/userStore"
+
 // Sample data for courses
 const courses = [
   {
     id: 1,
-    title: "What is the cause for global warming",
-    description: "Lorem Ipsum",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-    thumbnail: "/placeholder.svg?height=200&width=400",
-    lessonCount: 12,
+    title: "The Twin Paradox: Time Travel in Relativity",
+    description: "Unravel the mind-bending consequences of Einstein’s theory as we explore how time can tick differently for twins traveling at near-light speed.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30), // 30 hours ago
+    thumbnail: "/Twin.PNG?height=200&width=400",
+    lessonCount: 6,
   },
   {
     id: 2,
-    title: "Understanding climate change impacts",
-    description: "Lorem Ipsum",
+    title: "Lagrangian Mechanics: The Art of Motion",
+    description: "Discover the elegant framework that revolutionized physics, making sense of motion from planets to pendulums with the power of calculus.",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
-    thumbnail: "/placeholder.svg?height=200&width=400",
+    thumbnail: "/Lagrangian.PNG?height=200&width=400",
     lessonCount: 8,
   },
   {
     id: 3,
-    title: "Unleashing the Power of Speech Recognition",
-    description: "Lorem Ipsum",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 24 hours ago
-    thumbnail: "/placeholder.svg?height=200&width=400",
-    lessonCount: 15,
-  },
-  {
-    id: 4,
-    title: "Mastering the Art of Public Speaking",
-    description: "Lorem Ipsum",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30), // 30 hours ago
-    thumbnail: "/placeholder.svg?height=200&width=400",
-    lessonCount: 6,
-  },
-  {
-    id: 5,
-    title: "Unleashing the Power of Speech Recognition: Transforming Audio to Text",
-    description: "Lorem Ipsum",
+    title: "Zeno’s Paradox: Infinite Steps, Finite Journeys",
+    description: "Dive into the ancient puzzles that challenge our understanding of motion, infinity, and the very fabric of reality.",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36), // 36 hours ago
-    thumbnail: "/placeholder.svg?height=200&width=400",
+    thumbnail: "/Zeno.PNG?height=200&width=400",
     lessonCount: 10,
   },
-]
-
-// Sample data for recent chats
-const recentChats = [
-  {
-    id: 1,
-    title: "Introduction to AI",
-    createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    messageCount: 24,
-  },
-  {
-    id: 2,
-    title: "Web Development Fundamentals",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-    messageCount: 18,
-  },
-  {
-    id: 3,
-    title: "Data Science Essentials",
-    createdAt: new Date(Date.now() - 1000 * 60 * 90), // 90 minutes ago
-    messageCount: 32,
-  },
   {
     id: 4,
-    title: "UX Design Principles",
-    createdAt: new Date(Date.now() - 1000 * 60 * 120), // 2 hours ago
-    messageCount: 15,
+    title: "Noether’s Theorem: Symmetry Unleashed",
+    description: "Explore how Emmy Noether’s groundbreaking insight connects the beauty of symmetry to the fundamental laws that govern our universe.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
+    thumbnail: "/Noether.PNG?height=200&width=400",
+    lessonCount: 12,
   },
   {
     id: 5,
-    title: "Mobile App Development",
-    createdAt: new Date(Date.now() - 1000 * 60 * 150), // 2.5 hours ago
-    messageCount: 28,
+    title: "The Principle of Least Action: Nature’s Shortcut",
+    description: "Learn how the universe chooses the most efficient path, revealing the hidden simplicity behind complex physical phenomena.",
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 24 hours ago
+    thumbnail: "/PSA.PNG?height=200&width=400",
+    lessonCount: 15,
   },
 ]
-
 export default function LibraryPage() {
+
+  // Sample data for recent chats
+  const { user } = useUserStore()
+  const { data: recentChatsData } = useSWR(
+    user?.id ? '/api/history' : null,
+    async () => {
+      if (!user?.id) return { chats: [] }
+      const { chats } = await getRecentChats(user.id)
+      return { chats }
+    },
+    {
+      refreshInterval: 0, // Disable automatic polling
+      revalidateOnFocus: true, // Revalidate when window gains focus
+      revalidateOnReconnect: true, // Revalidate when browser regains connection
+    }
+  )
+
+  const recentChats = recentChatsData?.chats || []
+
   return (
     <div className="p-4 md:p-6 w-full">
       <div className="mb-6 md:mb-8">

@@ -119,3 +119,8 @@ export const useGraphStore = create<GraphStore>()(
     }
   )
 );
+
+// Add a function to clear the graph externally
+export function clearGraphOnNewMessage() {
+  useGraphStore.getState().clearGraph();
+}

@@ -1,5 +1,5 @@
 import { fermion } from "../models"
-import { v4 as uuid } from "uuid"
+import { nanoid } from "nanoid"
 import { generateObject, tool } from "ai"
 import { z } from "zod"
 import { saveQuiz } from "@avenire/database/queries"
@@ -59,7 +59,7 @@ For each question:
 8. Include follow-up questions to explore the concept further`
     })
 
-    const id = uuid()
+    const id = nanoid(12)
 
     const data = await saveQuiz({
       id,

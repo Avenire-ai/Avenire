@@ -2,7 +2,7 @@
 
 import type { UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
@@ -19,6 +19,8 @@ import { useIsMobile } from '@avenire/ui/src/hooks/use-mobile';
 import { getChatTitle } from '../../actions/actions';
 import { useCanvasStore } from '../../stores/canvasStore'
 import { usePathname } from 'next/navigation'
+import { useGraphStore } from '../../stores/graphStore';
+import { type CanvasData } from '../../lib/canvas_types';
 
 // Error types for better error handling
 type ChatErrorType =
@@ -69,9 +71,8 @@ export function Chat({
   selectedReasoningModel,
   isReadonly
 }: ChatProps) {
-  const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
-  const [deepResearchEnabled, setDeepResearchEnabled] = useState<boolean>(false);
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+  const [selectedMode, setSelectedMode] = useState<string>("");
   const [canvasKey, setCanvasKey] = useState(0);
   const pathname = usePathname();
 
@@ -80,7 +81,8 @@ export function Chat({
   const [messagesContainerRef, messagesEndRef, scroll] = useScrollToBottom<HTMLDivElement>();
   const isInView = useInView(messagesEndRef);
 
-  const { isOpen: isCanvasOpen, mode: canvasMode, openCanvas, closeCanvas, setChatId } = useCanvasStore();
+  const { isOpen: isCanvasOpen, mode: canvasMode, openCanvas, closeCanvas, setChatId, currentQuestion, currentFlashcard } = useCanvasStore();
+  const graphExpressions = useGraphStore((state) => state.expressions);
 
   // Close canvas on page change or refresh
   useEffect(() => {
@@ -105,6 +107,27 @@ export function Chat({
       duration: 5000
     });
   }, []);
+
+
+
+  const canvasData = useMemo(() => {
+    const data: CanvasData[] = []
+    if (currentQuestion) {
+      data.push({ type: 'quiz', question: currentQuestion });
+    }
+    if (currentFlashcard) {
+      data.push({ type: 'flashcard', flashcard: currentFlashcard });
+    }
+    data.push({
+      type: 'graph', expressions: graphExpressions.filter(expr => expr.type === 'expression').map((expr) => {
+        if (expr.type === 'expression') {
+          return expr.latex || ""
+        }
+        return ""
+      })
+    });
+    return data;
+  }, [currentQuestion, currentFlashcard, graphExpressions]);
 
   const handleToolCall = useCallback((toolCall: { name: string }) => {
     if (toolCall.name === 'flashcardGeneratorTool' || toolCall.name === 'quizGeneratorTool') {
@@ -134,9 +157,9 @@ export function Chat({
       chatId: id,
       selectedModel,
       selectedReasoningModel,
-      currentPlots: [],
-      thinkingEnabled,
-      deepResearchEnabled
+      thinkingEnabled: selectedMode === "thinking",
+      deepResearchEnabled: selectedMode === "research",
+      ...(canvasData ? { canvasData } : {})
     },
     initialMessages,
     experimental_throttle: 100,
@@ -157,26 +180,6 @@ export function Chat({
     },
     onError: handleError,
   });
-
-  const toggleResearch = useCallback(() => {
-    setDeepResearchEnabled(prev => {
-      if (prev) {
-        return false;
-      }
-      setThinkingEnabled(false);
-      return true;
-    });
-  }, []);
-
-  const toggleThinking = useCallback(() => {
-    setThinkingEnabled(prev => {
-      if (prev) {
-        return false;
-      }
-      setDeepResearchEnabled(false);
-      return true;
-    });
-  }, []);
 
   return (
     <div className={"flex h-screen w-full"}>
@@ -230,10 +233,8 @@ export function Chat({
                 input={input}
                 setInput={setInput}
                 reload={reload}
-                researchEnabled={deepResearchEnabled}
-                thinkingEnabled={thinkingEnabled}
-                toggleResearch={toggleResearch}
-                toggleThinking={toggleThinking}
+                selectedMode={selectedMode}
+                setSelectedMode={setSelectedMode}
                 handleSubmit={handleSubmit}
                 setData={setData}
                 status={status}
