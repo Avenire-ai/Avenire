@@ -30,6 +30,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ToggleGroup, ToggleGroupItem } from "@avenire/ui/components/toggle-group"
 import { useWhiteboardStore } from "../../stores/whiteboardStore";
 import { exportToBlob } from '@excalidraw/excalidraw';
+import { regenerateMessage } from './regenerate-message';
 
 // Error types for better error handling
 type InputErrorType =
@@ -77,6 +78,7 @@ function PureMultimodalInput({
   setSelectedMode,
   handleSubmit,
   className,
+  setMessages,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -454,6 +456,7 @@ function PureMultimodalInput({
               status={status}
               reload={reload}
               messages={messages}
+              setMessages={setMessages}
             />
           </div>
         </div>
@@ -461,7 +464,7 @@ function PureMultimodalInput({
           <ToggleGroup
             type="single"
             value={selectedMode}
-            onValueChange={(value) => value && setSelectedMode(value)}
+            onValueChange={(value) => setSelectedMode(value || "")}
             size="sm"
             variant="outline"
             className="border rounded-lg p-1"
@@ -470,13 +473,6 @@ function PureMultimodalInput({
               value="thinking"
               aria-label="Toggle thinking mode"
               className="text-xs px-3 py-1.5 h-auto"
-              onClick={() => {
-                if (selectedMode === "thinking") {
-                  setSelectedMode("")
-                } else {
-                  setSelectedMode("thinking")
-                }
-              }}
             >
               <Brain className="h-3 w-3 mr-1.5" />
               Thinking
@@ -485,13 +481,6 @@ function PureMultimodalInput({
               value="research"
               aria-label="Toggle deep research mode"
               className="text-xs px-3 py-1.5 h-auto"
-              onClick={() => {
-                if (selectedMode === "research") {
-                  setSelectedMode("")
-                } else {
-                  setSelectedMode("research")
-                }
-              }}
             >
               <Search className="h-3 w-3 mr-1.5" />
               Deep Research
@@ -540,6 +529,7 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
+// Refactor SendButton logic for clarity
 function PureSendButton({
   submitForm,
   input,
@@ -548,6 +538,7 @@ function PureSendButton({
   reload,
   messages,
   stop,
+  setMessages,
 }: {
   submitForm: () => void;
   input: string;
@@ -556,7 +547,9 @@ function PureSendButton({
   stop: () => void;
   reload: UseChatHelpers['reload'];
   messages: Array<UIMessage>;
+  setMessages: UseChatHelpers['setMessages'];
 }) {
+  // Show reload if error and last message is from user
   if (status === 'error' && messages.at(-1)?.role === "user") {
     return (
       <Button
@@ -565,22 +558,12 @@ function PureSendButton({
         variant="ghost"
         onClick={async (event) => {
           event.preventDefault();
-          const lastMessage = messages.at(-2);
-          if (lastMessage?.role === 'user') {
-            reload();
-          } else {
-            try {
-              if (lastMessage?.id) {
-                const result = await deleteTrailingMessages({
-                  id: lastMessage.id,
-                });
-                if (result.success) {
-                  reload();
-                }
-              }
-            } catch (error) {
-              console.error('Failed to delete trailing messages:', error);
-            }
+          if (messages.length > 1) {
+            await regenerateMessage({
+              message: messages.at(-2)!,
+              setMessages,
+              reload,
+            });
           }
         }}
         className="transition-colors"
@@ -590,6 +573,7 @@ function PureSendButton({
     );
   }
 
+  // Show stop if submitting
   if (status === 'submitted') {
     return (
       <Button
@@ -604,6 +588,8 @@ function PureSendButton({
     );
   }
 
+  // Show send if input is non-empty, not submitting, and no upload in progress
+  const canSend = input.length > 0 && uploadQueue.length === 0 && status === 'ready';
   return (
     <Button
       data-testid="send-button"
@@ -611,9 +597,9 @@ function PureSendButton({
       variant="ghost"
       onClick={(event) => {
         event.preventDefault();
-        submitForm();
+        if (canSend) submitForm();
       }}
-      disabled={input.length === 0 || uploadQueue.length > 0}
+      disabled={!canSend}
       className="transition-colors"
     >
       <ArrowUpIcon className="h-4 w-4" />

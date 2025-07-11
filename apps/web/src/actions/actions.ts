@@ -2,6 +2,46 @@
 
 import { fermion, generateText, Message } from "@avenire/ai";
 import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimestamp, getFlashcardsByChatId, getQuizzesByChatId, getChatById } from "@avenire/database/queries";
+import { auth } from "@avenire/auth/server";
+import { UTApi } from "uploadthing/server";
+import { createClient } from "redis";
+
+const redis = createClient({
+  url: process.env.REDIS_URL,
+});
+
+redis.on('error', (err) => console.error('Redis Client Error', err));
+
+async function getRedisClient() {
+  if (!redis.isOpen) {
+    await redis.connect();
+  }
+  return redis;
+}
+
+export async function getMatplotlibCache(hash: string): Promise<string | null> {
+  if (!hash) return null;
+  try {
+    const client = await getRedisClient();
+    const url = await client.get(`matplotlib-cache:${hash}`);
+    return url || null;
+  } catch (error) {
+    console.error('Redis GET error:', error);
+    return null;
+  }
+}
+
+export async function setMatplotlibCache(hash: string, url: string): Promise<boolean> {
+  if (!hash || !url) return false;
+  try {
+    const client = await getRedisClient();
+    await client.set(`matplotlib-cache:${hash}`, url);
+    return true;
+  } catch (error) {
+    console.error('Redis SET error:', error);
+    return false;
+  }
+} 
 
 export async function generateTitleFromUserMessage({
   message,
@@ -21,11 +61,7 @@ export async function generateTitleFromUserMessage({
   return title;
 }
 
-import { UTApi } from "uploadthing/server";
-
-const utapi = new UTApi({
-  token: process.env.UPLOADTHING_TOKEN, // Ensure your token is stored securely
-});
+const utapi = new UTApi();
 
 export async function deleteFile(url: string) {
   try {

@@ -1,7 +1,7 @@
 // import "server-only"
 
 import { chat, flashcards, Message, message, NewFlashcard, NewQuiz, quizzes } from "@avenire/database/schema";
-import { asc, desc, eq, and, gte, inArray } from "drizzle-orm";
+import { asc, desc, eq, and, gt, inArray } from "drizzle-orm";
 import { database } from "..";
 
 
@@ -229,7 +229,7 @@ export async function deleteMessagesByChatIdAfterTimestamp({
       .select({ id: message.id })
       .from(message)
       .where(
-        and(eq(message.chatId, chatId), gte(message.createdAt, timestamp)),
+        and(eq(message.chatId, chatId), gt(message.createdAt, timestamp)), // Changed from gte to gt
       );
 
     const messageIds = messagesToDelete.map((message) => message.id);

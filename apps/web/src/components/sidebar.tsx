@@ -126,7 +126,7 @@ export function Sidebar() {
                       onClick={() => openCanvas('flashcards')}
                       tooltip={!open ? "Open Canvas" : undefined}
                     >
-                      <Layout className="h-4 w-4" />
+                      <Pyramid className="h-4 w-4" />
                       {open && <span className="ml-2">Open Canvas</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -167,7 +167,7 @@ export function Sidebar() {
               <DropdownMenuTrigger asChild>
                 <div
                   className={cn(
-                    "flex items-center cursor-pointer rounded-lg hover:bg-neutral-800/50",
+                    "flex items-center cursor-pointer rounded-lg hover:bg-neutral-800/70 focus:bg-neutral-800/80 transition-colors shadow-sm border border-neutral-800/40",
                     open ? "gap-2 p-2" : "justify-center",
                   )}
                 >
@@ -178,7 +178,7 @@ export function Sidebar() {
                   {open && (
                     <>
                       <div className="flex flex-col flex-1">
-                        <span className="text-xs">{user?.name}</span>
+                        <span className="text-xs font-medium">{user?.name}</span>
                         <span className="text-xs text-muted-foreground">{user?.email}</span>
                       </div>
                       <ChevronDown className="h-3 w-3 text-muted-foreground" />
@@ -186,21 +186,21 @@ export function Sidebar() {
                   )}
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align={open ? "end" : "start"} side={open ? "right" : "right"} className="w-[200px]">
-                <DropdownMenuItem>
-                  <Link href="/profile">
+              <DropdownMenuContent align={open ? "end" : "start"} side={open ? "right" : "right"} className="w-[220px] rounded-xl shadow-lg border border-neutral-800/40 bg-neutral-900/95 backdrop-blur-md p-2">
+                <DropdownMenuItem className="rounded-md hover:bg-neutral-800/60 focus:bg-neutral-800/80 transition-colors">
+                  <Link href="/profile" className="flex items-center w-full">
                     <User2 className="h-4 w-4 mr-2" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/settings">
+                <DropdownMenuItem className="rounded-md hover:bg-neutral-800/60 focus:bg-neutral-800/80 transition-colors">
+                  <Link href="/settings" className="flex items-center w-full">
                     <Settings className="h-4 w-4 mr-2" />
                     Account Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={() => signOut()} className="rounded-md hover:bg-destructive/20 focus:bg-destructive/30 transition-colors">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </DropdownMenuItem>

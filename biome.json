@@ -18,6 +18,7 @@
         "noUndeclaredVariables": "off"
       },
       "style": {
+        "useBlockStatements": "off",
         "useImportType": "off",
         "noNegationElse": "off",
         "useSelfClosingElements": "off",

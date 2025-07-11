@@ -19,14 +19,9 @@ import { useGraphStore, clearGraphOnNewMessage } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
 import { deleteTrailingMessages } from '../../actions/actions';
+import { MermaidDiagram } from "../mermaid"
 import { Canvas, type Mode } from './canvas/canvas';
-
-const GraphImage = dynamic(
-  () => import("../graph/desmos").then((mod) => mod.GraphImage),
-  {
-    ssr: false,
-  }
-);
+import { regenerateMessage } from './regenerate-message';
 
 // Error types for better error handling
 type MessageErrorType =
@@ -62,6 +57,7 @@ const PurePreviewMessage = ({
   message,
   isLoading,
   reload,
+  setMessages,
   isReadonly,
   error,
   openCanvas
@@ -81,17 +77,12 @@ const PurePreviewMessage = ({
   const [researchData, setResearchData] = useState<Array<any>>([])
   const { addExpression, clearGraph } = useGraphStore()
 
-  const handleDeleteTrailing = async () => {
-    try {
-      const result = await deleteTrailingMessages({
-        id: messages.at(-2)?.id || message.id,
-      });
-      if (result.success) {
-        reload();
-      }
-    } catch (error) {
-      console.error('Failed to delete trailing messages:', error);
-    }
+  const handleRegenerate = async () => {
+    await regenerateMessage({
+      message,
+      setMessages,
+      reload,
+    });
   };
 
   useEffect(() => {
@@ -113,9 +104,12 @@ const PurePreviewMessage = ({
       >
         <div className="flex gap-4 flex-col w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl">
           {message.role === 'assistant' && (
-            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-              <div className="translate-y-px">
+            <div className="flex flex-row items-center gap-2">
+              <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
                 <SparklesIcon className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col gap-4 text-muted-foreground">
+                Fermion
               </div>
             </div>
           )}
@@ -133,7 +127,7 @@ const PurePreviewMessage = ({
               </CardHeader>
               <CardContent className="text-sm text-destructive/80">
                 <p>Technical details (for support):</p>
-                <code className="block mt-1 p-2 bg-destructive/5 rounded text-xs wrap-break-word">
+                <code className="block mt-1 p-2 bg-destructive/5 rounded text-xs break-words whitespace-pre-wrap max-w-full overflow-x-auto">
                   {error.name}: {error.message}
                 </code>
               </CardContent>
@@ -237,7 +231,6 @@ const PurePreviewMessage = ({
                     case "graphTool":
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
-                          <GraphImage expressions={args.expressions} />
                           <Button
                             variant="outline"
                             size="sm"
@@ -320,7 +313,6 @@ const PurePreviewMessage = ({
                     case "graphTool":
                       return (
                         <div key={key} className="flex flex-col items-start gap-2">
-                          <GraphImage expressions={args.expressions} />
                           <Button
                             variant="outline"
                             size="sm"
@@ -336,7 +328,13 @@ const PurePreviewMessage = ({
                         </div>
                       );
                     case "diagramTool":
-                      return null;
+                      return (
+                        <MermaidDiagram
+                          chart={result as string}
+                          containerHeight={400}
+                          containerWidth={800}
+                        />
+                      );
                     default:
                       break;
                   }
@@ -351,7 +349,7 @@ const PurePreviewMessage = ({
             isLoading={isLoading}
             message={message}
             reload={reload}
-            onDeleteTrailing={handleDeleteTrailing}
+            onDeleteTrailing={handleRegenerate}
           />
         </div>
       </motion.div>
@@ -383,13 +381,20 @@ export const ThinkingMessage = () => {
       data-role={role}
     >
       <div className="flex gap-4 flex-col w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl">
-        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
-          <SparklesIcon className="h-4 w-4" />
+        <div className="flex flex-row items-center gap-2">
+          <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+            <SparklesIcon className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col gap-4 text-muted-foreground">
+            Fermion
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col gap-4 text-muted-foreground">
-            Hmm...
+        <div className="ml-2 flex flex-col gap-2 w-full">
+          <div
+            className="h-6 w-6 relative animate-spin rounded-full blur-[1px] shadow-[0_-5px_20px_0_#9FAFC8,0_5px_20px_0_#CD93AC] bg-gradient-to-b from-[#9FAFC8] to-[#CD93AC]"
+          >
+            <div className="absolute top-0 left-0 w-full h-full rounded-full blur-[10px] bg-neutral-900" />
           </div>
         </div>
       </div>

@@ -55,6 +55,8 @@ export const diagramTool = tool({
         7. Prefer flowchart, sequence, or class diagrams unless specifically requested otherwise
         8. Never use parentheses (), square brackets [], curly braces {}, pipes ||  in node names or labels as they can block up the Mermaid syntax
         9. The code need not have comments.
+        10. IMPORTANT: In all Mermaid diagrams, always wrap any text inside brackets with double quotes.
+        For example: A["Start"], not A[Start]. This applies to all node labels in brackets.
  
         For ${diagramType} diagrams specifically:
         ${getDiagramTypeInstructions(diagramType)}`,

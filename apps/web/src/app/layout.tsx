@@ -7,6 +7,7 @@ import { StorageSSRPlugin } from "@avenire/storage/ssr"
 import { extractRouterConfig } from "@avenire/storage";
 import { router } from "../lib/upload";
 import Script from "next/script"
+import { TooltipProvider } from "@avenire/ui/components/tooltip";
 
 export const metadata: Metadata = {
   title: "Avenire",
@@ -19,16 +20,21 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`antialiased overflow-hidden`}>
-        <Script
-          src="https://www.desmos.com/api/v1.10/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"
-          strategy="beforeInteractive"
-        />
+    <html lang="en" suppressHydrationWarning className={"antialiased overflow-hidden"}>
+      <Script
+        src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"
+        strategy="beforeInteractive"
+      />
+      <Script
+        src="https://www.desmos.com/api/v1.10/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"
+        strategy="beforeInteractive"
+      />
+      <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <StorageSSRPlugin routerConfig={extractRouterConfig(router)} />
-
-          {children}
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
           <Toaster />
         </ThemeProvider>
       </body>
