@@ -248,43 +248,37 @@ function PureMultimodalInput({
 
     // Whiteboard attachment logic
     const { whiteboardAPI, whiteboardLoading } = useWhiteboardStore.getState();
-    async function getDataURL() {
-      if (!whiteboardLoading && whiteboardAPI) {
-        const elements = whiteboardAPI.getSceneElements();
-        if (elements?.length) {
-          const blob = await exportToBlob({
-            elements,
-            exportPadding: 0,
-            quality: 0.7,
-            files: whiteboardAPI.getFiles() || null,
-            mimeType: "image/png",
-          });
-
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        };
-      };
-    }
-
     let whiteboardAttachment: Attachment | null = null;
     if (whiteboardAPI) {
       const elements = whiteboardAPI.getSceneElements();
       if (elements && elements.length > 0) {
-        const blob = await getDataURL();
-        if (blob) {
-          whiteboardAttachment = {
-            id: uuid(),
-            file: new File([blob], 'whiteboard.png', { type: 'image/png' }), // TODO: fix this
-            name: 'whiteboard.png',
-            url: blob,
-            contentType: 'image/png',
-            status: 'completed',
-            abortController: undefined,
-          };
+        // Export to PNG blob
+        const blob = await exportToBlob({
+          elements,
+          exportPadding: 0,
+          quality: 0.7,
+          files: whiteboardAPI.getFiles() || null,
+          mimeType: "image/png",
+        });
+        // Create a File from the blob
+        const file = new File([blob], 'whiteboard.png', { type: 'image/png' });
+        try {
+          const response = await startUpload([file]);
+          if (response && response[0]?.ufsUrl) {
+            whiteboardAttachment = {
+              id: uuid(),
+              file,
+              name: 'whiteboard.png',
+              url: response[0].ufsUrl,
+              contentType: 'image/png',
+              status: 'completed',
+              abortController: undefined,
+            };
+          } else {
+            toast.error('Failed to upload whiteboard image.');
+          }
+        } catch (error) {
+          toast.error('Failed to upload whiteboard image.');
         }
       }
     }

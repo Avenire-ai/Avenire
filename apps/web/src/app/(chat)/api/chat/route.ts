@@ -1,13 +1,10 @@
-import { Message, smoothStream, streamText, fermion, graphTool, ATLAS_PROMPT, createDataStreamResponse, deepResearch, LanguageModel, appendResponseMessages, DEEP_RESEARCH_PROMPT } from "@avenire/ai"
+import { Message, smoothStream, streamText, fermion, graphTool, FERMION_PROMPT, createDataStreamResponse, deepResearch, LanguageModel, appendResponseMessages, DEEP_RESEARCH_PROMPT, flashcardGeneratorTool, quizGeneratorTool, plotTool } from "@avenire/ai"
 import { getTrailingMessageId, sanitizeResponseMessages } from "@avenire/ai/utils"
 import { auth } from "@avenire/auth/server";
 import { deleteChatById, getChatById, getChatsByUserId, getMessagesByChatId, saveChat, saveMessages } from "@avenire/database/queries"
 import { generateTitleFromUserMessage } from "../../../../actions/actions"
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
-import { quizGeneratorTool } from "@avenire/ai/tools/quiz-generator"
-import { flashcardGeneratorTool } from "@avenire/ai/tools/flashcard-generator"
-import { diagramTool } from "@avenire/ai/tools/diagramTool"
 import { type CanvasData } from "../../../../lib/canvas_types";
 
 function formatCanvasData(data: CanvasData,
@@ -127,12 +124,12 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "diagramTool"> = deepResearchEnabled ? ["deepResearch"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "diagramTool"]
+    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["deepResearch", "plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
 
 
     const instructions = deepResearchEnabled
       ? DEEP_RESEARCH_PROMPT(session.user.name)
-      : ATLAS_PROMPT(
+      : FERMION_PROMPT(
         session.user.name,
         Array.isArray(canvasData)
           ? canvasData.map(formatCanvasData).join('\n')
@@ -148,6 +145,7 @@ export async function POST(req: Request) {
           model: thinkingEnabled ? reasoningModel : model,
           system: instructions,
           messages,
+          maxTokens: 1600,
           tools: {
             graphTool,
             quizGeneratorTool: quizGeneratorTool({
@@ -162,11 +160,12 @@ export async function POST(req: Request) {
               dataStream,
               model: reasoningModel
             }),
-            diagramTool,
+            plotTool,
           },
           maxSteps: 5,
           experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
+          experimental_continueSteps: true,
           experimental_generateMessageId: uuid,
           onFinish: async ({ response }) => {
             if (session.user?.id) {
@@ -201,6 +200,7 @@ export async function POST(req: Request) {
 
               } catch (error) {
                 console.error('Failed to save chat');
+                console.error(error)
               }
             }
           }

@@ -20,11 +20,6 @@ const MermaidDiagram = dynamic(
 // Dynamically import the MatplotlibRenderer (client-only)
 const MatplotlibRenderer = dynamic(() => import("./matplotlib-renderer").then(mod => mod.MatplotlibRenderer), { ssr: false });
 
-function parseMarkdownIntoBlocks(markdown: string): string[] {
-  const tokens = marked.lexer(markdown);
-  return tokens.map(token => token.raw);
-}
-
 const Code = (props: any) => {
   const { children, className, node, ...rest } = props;
   const match = /language-(\w+)/.exec(className || "");
@@ -42,24 +37,7 @@ const Code = (props: any) => {
     );
   }
 
-  // Check if this is a Matplotlib code block
-  if (match && match[1].toLowerCase() === 'matplotlib') {
-    const codeString = String(children);
-    // Only render if the code block is complete (ends with a closing ``` on its own line)
-    const isComplete = /\n```\s*$/.test(codeString);
-    if (!isComplete) {
-      // Render the existing skeleton (MatplotlibRenderer will do this, but we avoid mounting it at all here)
-      return <div className="my-4"><div className="w-full h-[200px] bg-muted rounded-lg animate-pulse" /></div>;
-    }
-    // Remove the trailing ``` before passing to the renderer
-    const cleanedCode = codeString.replace(/\n```\s*$/, '').trim();
-    return (
-      <div className="my-4">
-        <MatplotlibRenderer code={cleanedCode} />
-      </div>
-    );
-  }
-
+  // Treat matplotlib as a regular code block
   return match ? (
     <div className="overflow-scroll">
       <code {...rest} className={cn(className, "font-mono text-sm bg-muted px-2 py-1 rounded-md")}>
@@ -128,11 +106,7 @@ MemoizedMarkdownBlock.displayName = 'MemoizedMarkdownBlock';
 
 export const Markdown = memo(
   ({ content, id }: { content: string; id: string }) => {
-    const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
-
-    return blocks.map((block, index) => (
-      <MemoizedMarkdownBlock content={block} key={`${id}-block_${index}`} />
-    ));
+    return <MemoizedMarkdownBlock content={content} key={id} />;
   },
 );
 

@@ -5,7 +5,7 @@ const DEFAULT_POOL_SIZE = 3;
 const PRELOAD_PACKAGES = ['matplotlib', 'numpy', 'pandas', 'scipy'];
 
 export type WorkerHandle = {
-  renderPlot: (code: string) => Promise<{ dataUrl: string }>,
+  renderPlot: (code: string, theme: 'light' | 'dark') => Promise<{ dataUrl: string }>,
   terminate: () => void,
   _worker: Worker,
   _busy: boolean,

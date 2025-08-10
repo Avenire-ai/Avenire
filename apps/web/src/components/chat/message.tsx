@@ -22,6 +22,7 @@ import { deleteTrailingMessages } from '../../actions/actions';
 import { MermaidDiagram } from "../mermaid"
 import { Canvas, type Mode } from './canvas/canvas';
 import { regenerateMessage } from './regenerate-message';
+import { MatplotlibRenderer } from "../matplotlib-renderer";
 
 // Error types for better error handling
 type MessageErrorType =
@@ -327,13 +328,11 @@ const PurePreviewMessage = ({
                           </Button>
                         </div>
                       );
-                    case "diagramTool":
+                    case "plotTool":
                       return (
-                        <MermaidDiagram
-                          chart={result as string}
-                          containerHeight={400}
-                          containerWidth={800}
-                        />
+                        <div key={key} className="flex flex-col items-start gap-2">
+                          <MatplotlibRenderer code={result as string} />
+                        </div>
                       );
                     default:
                       break;

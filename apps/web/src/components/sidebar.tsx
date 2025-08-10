@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookOpen, Trash, Settings, ChevronDown, LogOut, User2, Layout, Pyramid } from "lucide-react"
+import { Home, BookOpen, Trash, Trash2, Settings, ChevronDown, LogOut, User2, Layout, Pyramid, MessageCircle } from "lucide-react"
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -29,9 +29,96 @@ import Image from "next/image"
 import { useCanvasStore } from "../stores/canvasStore"
 import { Button } from "@avenire/ui/components/button";
 import { AnimatePresence, motion } from "motion/react"
+import { Card, CardContent } from "@avenire/ui/components/card";
+import { PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@avenire/ui/components/tooltip";
+
+interface ChatSidebarItemProps {
+  id: string
+  title: string
+  href: string
+  isActive?: boolean
+  onDelete?: (id: string) => void
+  showTooltip?: boolean
+}
+
+export function ChatSidebarItem({
+  id,
+  title,
+  href,
+  isActive = false,
+  onDelete,
+  showTooltip = false,
+}: ChatSidebarItemProps) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onDelete?.(id)
+  }
+
+  const buttonContent = (
+    <div
+      className="group relative w-full"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Button
+        asChild
+        variant={isActive ? "secondary" : "ghost"}
+        className={cn(
+          "w-full justify-start h-10 px-3 transition-all duration-200 ease-in-out",
+          "hover:bg-accent hover:text-accent-foreground",
+          "group-hover:pr-12",
+          isActive && "bg-accent text-accent-foreground",
+        )}
+      >
+        <Link href={href} className="text-sm flex items-center w-full">
+          <MessageCircle className="w-4 h-4 mr-3 flex-shrink-0" />
+          <span className="truncate text-left flex-1">{title}</span>
+        </Link>
+      </Button>
+
+      {/* Delete button - appears on hover */}
+      <div
+        className={cn(
+          "absolute right-2 top-1/2 -translate-y-1/2 transition-all duration-200 ease-in-out",
+          isHovered ? "opacity-100 translate-x-0 pointer-events-auto" : "opacity-0 translate-x-2 pointer-events-none",
+        )}
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 hover:bg-destructive hover:text-destructive-foreground transition-colors duration-150"
+          onClick={handleDelete}
+        >
+          <Trash2 className="w-3 h-3" />
+          <span className="sr-only">Delete chat {title}</span>
+        </Button>
+      </div>
+    </div>
+  )
+
+  if (showTooltip) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs">
+            <p>{title}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return buttonContent
+}
 
 const menuItems = [
-  { icon: Home, label: "Home", href: "/" },
+  { icon: Home, label: "Home", href: "/dashboard" },
   { icon: BookOpen, label: "New chat", href: "/chat" },
   { icon: Settings, label: "Settings", href: "/settings" },
 ]
@@ -44,7 +131,7 @@ export function Sidebar() {
   const isChatPage = pathname?.startsWith('/chat');
   const { openCanvas } = useCanvasStore();
 
-  const { data: recentChatsData } = useSWR(
+  const { data: recentChatsData, mutate } = useSWR(
     user?.id ? '/api/history' : null,
     async () => {
       if (!user?.id) return { chats: [] };
@@ -59,6 +146,31 @@ export function Sidebar() {
   );
 
   const recentChats = recentChatsData?.chats || [];
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      const response = await fetch(`/api/chat?id=${chatId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Check if we're deleting the current chat
+        const isCurrentChat = pathname === `/chat/${chatId}`;
+
+        // Refresh the chat list
+        mutate();
+
+        // If we're deleting the current chat, redirect to /chat
+        if (isCurrentChat) {
+          router.push('/chat');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  };
+
+  const router = useRouter();
 
   return (
     <>
@@ -108,7 +220,13 @@ export function Sidebar() {
                   <SidebarMenuItem key={item.label}>
                     <SidebarMenuButton
                       asChild
-                      isActive={activeItem === item.label}
+                      isActive={
+                        activeItem === item.label &&
+                        (
+                          item.href.startsWith('/chat/') &&
+                          /^\/chat\/[^/]+$/.test(pathname)
+                        )!
+                      }
                       onClick={() => setActiveItem(item.label)}
                       tooltip={!open ? item.label : undefined}
                     >
@@ -135,27 +253,27 @@ export function Sidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {open && (
+          {open && recentChats.length > 0 && (
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-medium text-neutral-400">Recently Opened</SidebarGroupLabel>
+              <SidebarGroupLabel>Recent chats</SidebarGroupLabel>
               <SidebarGroupContent>
-                {recentChats.length > 0 ? (
-                  <SidebarMenu>
-                    {recentChats.map((chat) => (
+                <SidebarMenu>
+                  {recentChats.map((chat) => {
+                    const isCurrentChat = pathname === `/chat/${chat.id}`;
+                    return (
                       <SidebarMenuItem key={chat.id}>
-                        <SidebarMenuButton asChild>
-                          <Link href={`/chat/${chat.id}`} className="text-sm">
-                            <span className="truncate">{chat.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                        <ChatSidebarItem
+                          id={chat.id}
+                          title={chat.title}
+                          href={`/chat/${chat.id}`}
+                          isActive={isCurrentChat}
+                          onDelete={handleDeleteChat}
+                          showTooltip={!open}
+                        />
                       </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                ) : (
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm text-muted-foreground">Start a new chat to see your conversations here</p>
-                  </div>
-                )}
+                    );
+                  })}
+                </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           )}

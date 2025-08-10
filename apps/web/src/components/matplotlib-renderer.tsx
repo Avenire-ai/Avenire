@@ -9,6 +9,9 @@ import {
   DialogClose,
 } from "@avenire/ui/components/dialog";
 import { useMatplotlibPlot } from "../lib/useMatplotlibPlot";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { Button } from "@avenire/ui/src/components/button";
+import { MinusIcon, RefreshCw, PlusIcon } from "lucide-react";
 
 // Debounce hook
 function useDebouncedValue<T>(value: T, delay: number): T {
@@ -64,12 +67,35 @@ export const MatplotlibRenderer: React.FC<{ code: string }> = ({ code }) => {
           />
         </DialogTrigger>
         <DialogContent className="flex flex-col items-center justify-center max-w-[95vw] max-h-[95vh]">
-          <img
-            src={imgUrl}
-            alt="Generated plot enlarged"
-            className="max-w-full max-h-full rounded-lg object-contain"
-          />
-          <DialogClose className="absolute top-4 right-4" />
+          <div className="w-full h-full flex flex-col items-center justify-center relative" style={{ minHeight: 300, minWidth: 300 }}>
+            <TransformWrapper initialScale={1} minScale={0.5} maxScale={5} wheel={{ step: 0.1 }}>
+              {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
+                <>
+                  <div className="flex gap-2 mb-2 z-10 absolute top-2 left-2">
+                    <Button size="icon" type="button" onClick={() => zoomIn()} variant="ghost" aria-label="Zoom in">
+                      <PlusIcon className="w-5 h-5" />
+                    </Button>
+                    <Button size="icon" type="button" onClick={() => zoomOut()} variant="ghost" aria-label="Zoom out">
+                      <MinusIcon className="w-5 h-5" />
+                    </Button>
+                    <Button size="icon" type="button" onClick={() => resetTransform()} variant="ghost" aria-label="Reset zoom">
+                      <RefreshCw className="w-5 h-5" />
+                    </Button>
+                  </div>
+                  <TransformComponent>
+                    <img
+                      src={imgUrl}
+                      alt="Generated plot enlarged"
+                      className="max-w-full max-h-[80vh] rounded-lg object-contain select-none"
+                      draggable={false}
+                      style={{ display: 'block', margin: '0 auto' }}
+                    />
+                  </TransformComponent>
+                </>
+              )}
+            </TransformWrapper>
+            <DialogClose className="absolute top-4 right-4" />
+          </div>
         </DialogContent>
       </Dialog>
     );

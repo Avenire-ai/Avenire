@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { renderPlotOrchestrator } from './plot-render-orchestrator';
+import { useTheme } from 'next-themes';
 
 export function useMatplotlibPlot({
   code,
@@ -13,7 +14,7 @@ export function useMatplotlibPlot({
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const uploadFnRef = useRef(uploadFn);
-
+  const { theme } = useTheme();
   // Update the ref when uploadFn changes
   useEffect(() => {
     uploadFnRef.current = uploadFn;
@@ -28,7 +29,7 @@ export function useMatplotlibPlot({
     setError(null);
     setImgUrl(null);
 
-    renderPlotOrchestrator({ code, uploadFn: uploadFnRef.current }).then(result => {
+    renderPlotOrchestrator({ code, uploadFn: uploadFnRef.current, theme: theme as 'light' | 'dark' }).then(result => {
       if (cancelled || requestIdRef.current !== thisRequest) return;
       if ('url' in result) {
         setImgUrl(result.url);

@@ -1,34 +1,25 @@
-import { UseChatHelpers } from 'ai/react';
 import { deleteTrailingMessages } from '../../actions/actions';
 import type { UIMessage } from 'ai';
+import { UseChatHelpers } from 'ai/react';
 
 export async function regenerateMessage({
   message,
   setMessages,
   reload,
-  draftContent,
 }: {
   message: UIMessage;
   setMessages: UseChatHelpers['setMessages'];
-  reload: UseChatHelpers['reload'];
-  draftContent?: string;
+  reload: UseChatHelpers['reload']
 }) {
+  // Delete trailing messages (including the current assistant message and any after it)
   await deleteTrailingMessages({ id: message.id });
-
-  if (draftContent) {
-    setMessages((messages) => {
-      const lastUserMessageIndex = messages.findIndex(m => m.role === 'user');
-      if (lastUserMessageIndex !== -1) {
-        const updatedMessages = [...messages];
-        updatedMessages[lastUserMessageIndex] = {
-          ...updatedMessages[lastUserMessageIndex],
-          content: draftContent,
-        };
-        return updatedMessages;
-      }
-      return messages;
-    });
-  }
-
+  setMessages((messages) => {
+    const index = messages.findIndex((m) => m.id === message.id);
+    if (index !== -1) {
+      // Keep only messages before the assistant message
+      return messages.slice(0, index);
+    }
+    return messages;
+  });
   reload();
 }

@@ -12,9 +12,11 @@ async function hashCode(code: string): Promise<string> {
 export async function renderPlotOrchestrator({
   code,
   uploadFn,
+  theme,
 }: {
   code: string;
   uploadFn: (file: File) => Promise<string>;
+  theme: 'light' | 'dark';
 }): Promise<{ url: string } | { error: string }> {
   // Step 1: Check code size
   if (code.length > 4000) {
@@ -35,7 +37,7 @@ export async function renderPlotOrchestrator({
   const worker = await pool.getAvailableWorker();
 
   try {
-    const result = await worker.renderPlot(code);
+    const result = await worker.renderPlot(code, theme);
     pool.releaseWorker(worker);
 
     if (!result?.dataUrl) {

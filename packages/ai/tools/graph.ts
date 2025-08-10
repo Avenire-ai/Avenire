@@ -9,6 +9,9 @@ const graphSchema = z.object({
         `A LaTeX string representing the mathematical expression to be graphed. Use Desmos-compatible LaTeX syntax:
 
       CRITICAL: Always prioritize interactivity! Use sliders and dynamic elements to make graphs engaging and educational.
+      ALWAYS use a backslash (\\) for square roots (\\sqrt{}), trigonometric functions (\\sin, \\cos, etc.), and all other functions as required by Desmos LaTeX syntax.
+
+      For simple coordinate geometry, calculus, polynomials, and algebra, ALWAYS use BOTH this tool (for interactive/educational plots) AND the plotTool (for static/advanced plots).
 
       BASIC SYNTAX RULES (Desmos API v1.11):
       - Use ^ for exponents: x^2, x^{3}
@@ -50,12 +53,14 @@ const graphSchema = z.object({
          - Power: y = x^a, y = a*x^b
          - Absolute value: y = |x|, y = |a*x + b|
 
-      2. PARAMETRIC: (x(t), y(t))
+      2. PARAMETRIC: (x(t), y(t)) - Use single expression with comma-separated coordinates
          - Circle: (r*\\cos(t), r*\\sin(t))
          - Ellipse: (a*\\cos(t), b*\\sin(t))
          - Spiral: (t*\\cos(t), t*\\sin(t))
          - Lissajous: (a*\\sin(b*t), c*\\sin(d*t))
          - Cardioid: (a*(1-\\cos(t))*\\cos(t), a*(1-\\cos(t))*\\sin(t))
+         - IMPORTANT: For parametric equations, use ONE expression with (x(t), y(t)) format
+         - DO NOT split into separate x = ... and y = ... expressions
 
       3. POLAR: r = f(theta)
          - Circle: r = a
@@ -83,27 +88,26 @@ const graphSchema = z.object({
          - y >= a*x + b
          - |x| + |y| <= a
 
-      ADVANCED FEATURES:
-      - Points: (x,y) or (a,b) for draggable points
-      - Lines: y = m*x + b or a*x + b*y = c
-      - Segments: Use line segments between points
-      - Regions: Use inequalities for shading
-      - Tables: Use table format for data points
-      - Statistics: Use regression functions
-      - Actions: Enable with actions: 'auto' in calculator options
-      - Substitutions: Use "with" substitutions and list comprehensions
-      - Folders: Organize expressions in folders
-      - Notes: Add text notes to explain concepts
-
       INTERACTIVITY EXAMPLES:
       - Interactive parabola: y = a*x^2 + b*x + c (configure a,b,c sliders in sliderBounds)
       - Animated circle: (r*\\cos(t), r*\\sin(t)) (configure r slider in sliderBounds)
       - Dynamic rose: r = a*\\sin(b*theta) (configure a,b sliders in sliderBounds)
-      - Draggable point on curve: (a, a^2) (configure a slider in sliderBounds)
       - Interactive piecewise: y = {x < a: b*x, x >= a: c*x^2} (configure a,b,c sliders in sliderBounds)
       - Animated spiral: r = t*\\sin(theta) (configure t animation in sliderBounds)
       - Dynamic ellipse: (a*\\cos(t), b*\\sin(t)) (configure a,b sliders in sliderBounds)
       - Interactive absolute value: y = a*|x - b| + c (configure a,b,c sliders in sliderBounds)
+      - Polynomial exploration: y = a*x^3 + b*x^2 + c*x + d (configure a,b,c,d sliders in sliderBounds)
+      - Trigonometric functions: y = a*\\sin(b*x + c) + d (configure a,b,c,d sliders in sliderBounds)
+      - Derivative exploration: y = f(x) and y = f'(x) with sliders for function parameters
+      - Integral visualization: y = f(x) with shaded area and slider for integration bounds
+      - Coordinate geometry: y = mx + b with sliders for slope (m) and y-intercept (b)
+      - Algebraic functions: y = \\sqrt(ax + b) with sliders for a,b parameters
+
+      CORRECT PARAMETRIC EXAMPLES:
+      - Animated circle: (r*\\cos(t), r*\\sin(t)) where r is a slider
+      - Dynamic ellipse: (a*\\cos(t), b*\\sin(t)) where a,b are sliders
+      - Spiral: (t*\\cos(t), t*\\sin(t)) where t animates
+      - Lissajous: (a*\\sin(b*t), c*\\sin(d*t)) where a,b,c,d are sliders
 
       ALWAYS INCLUDE:
       1. Sliders for coefficients (a, b, c, etc.) with proper bounds in sliderBounds
@@ -112,6 +116,7 @@ const graphSchema = z.object({
       4. Interactive elements that demonstrate concepts
       5. Clear labels and descriptions
       6. Animation parameters when appropriate
+      7. For coordinate geometry, calculus, polynomials, and algebra: ALWAYS use interactive sliders and draggable points
 
       AVOID:
       - Complex nested functions that may not render properly
@@ -120,6 +125,8 @@ const graphSchema = z.object({
       - Overly complex expressions that confuse users
       - Missing slider bounds or inappropriate ranges
       - Putting slider bounds in LaTeX expressions (use sliderBounds property)
+      - For coordinate geometry, calculus, polynomials, and algebra: avoid static-only visualizations
+      - Splitting parametric equations into separate x = ... and y = ... expressions
       `
       ),
       lineStyle: z.enum(["solid", "dashed", "dotted", "thick", "thin"]).optional().describe("Sets the drawing style for line segments."),
@@ -186,7 +193,7 @@ const graphSchema = z.object({
 });
 
 export const graphTool = tool({
-  description: "A tool for visualizing mathematical functions, equations, or expressions in LaTeX format using Desmos API v1.11 compatible syntax. CRITICAL: Always prioritize interactivity by including sliders, animations, and dynamic elements to make mathematical concepts engaging and educational. The tool supports interactive elements like sliders, animations, draggable points, and dynamic ranges to help users explore mathematical concepts dynamically. Always include multiple interactive elements, proper slider bounds, and use appropriate domains/ranges for optimal visualization.",
+  description: "Interactive math graphing (Desmos LaTeX). WHEN TO USE: call immediately for coordinate geometry, algebraic functions, polynomials, basic calculus visualizations, inequalities, piecewise, parametric/polar curves where interactivity helps exploration. DO NOT narrate tool usage—just call. ALWAYS include sliders for parameters (a,b,c,...) as separate expressions with sliderBounds; add animations (t) where useful; use draggable points when appropriate; set domain/range thoughtfully. DECISION: For simple-to-intermediate math education, prioritize this tool. If a static high-fidelity figure is also helpful, invoke plotTool as well. TRIGGERS: equations like y=f(x), implicit curves, inequalities, piecewise, parametric (x(t),y(t)), polar r=f(theta), requests to \"explore\", \"tune\", or \"interactive\" graphs.",
   parameters: graphSchema,
   execute: async ({ expressions }) => {
     const exp = expressions.map(({ latex, sliderBounds, lineStyle, opacity, domain, range, label }) => ({

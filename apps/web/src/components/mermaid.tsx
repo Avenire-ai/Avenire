@@ -8,6 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@avenire/ui/components
 
 import { useTheme } from 'next-themes';
 
+// Function to fix Mermaid node labels that don't have double quotes
+function fixMermaidQuotes(code: string): string {
+  // Fix node labels that don't have double quotes
+  // Pattern: nodeId[label] -> nodeId["label"]
+  // Pattern: nodeId[label with spaces] -> nodeId["label with spaces"]
+  return code.replace(/(\w+)\[([^"\]]+)\]/g, '$1["$2"]');
+}
 
 interface InteractiveMermaidChartProps {
   chart: string
@@ -47,6 +54,9 @@ export function MermaidDiagram({
       setError(null)
 
       const mermaid = (await import("mermaid")).default
+
+      // Fix the chart code before rendering
+      const fixedChart = fixMermaidQuotes(chart)
 
       // Light theme based on provided CSS variables
       const lightMermaidTheme = {
@@ -213,7 +223,7 @@ export function MermaidDiagram({
 
         // Validate chart syntax before rendering
         try {
-          const { svg } = await mermaid.render(id, chart)
+          const { svg } = await mermaid.render(id, fixedChart)
 
           // Check if the SVG contains error indicators
           chartRef.current.innerHTML = svg

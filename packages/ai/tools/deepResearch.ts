@@ -3,14 +3,14 @@ import { z } from "zod";
 import { extract, search } from "./search";
 
 export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWriter, model: LanguageModel }) => tool({
-  description: "Perform deep research on a topic using an AI agent that coordinates search, extract, and analysis tools with reasoning steps.",
+  description: "Deep multi-step web research. WHEN TO USE: call when the user requests background research, literature review, comparisons, source gathering, pros/cons, timelines, or asks to 'research/investigate/find sources'. BEHAVIOR: orchestrates web search, extraction, iterative analysis, gap-finding, and final synthesis with citations. OUTPUT: returns a long-form analysis and a list of sources; streams progress via data events. DO NOT narrate the intention to use this tool—just call it.",
   parameters: z.object({
     topic: z.string().describe('The topic or question to research'),
     maxDepth: z.number().describe('The maximum depth to which the research can to go through. Defaults to 7.').optional(),
   }),
   execute: async ({ topic, maxDepth = 3 }) => {
     const startTime = Date.now();
-    const timeLimit = 4.5 * 80 * 1000;
+    const timeLimit = 6 * 80 * 1000; // Extended from 4.5 to 6 minutes
     const researchState = {
       findings: [] as Array<{ content: string; source: string }>,
       sources: [] as Array<{ url: string, title: string, description: string }>,

@@ -29,10 +29,10 @@ const quizGeneratorSchema = z.object({
 });
 
 export const quizGeneratorTool = ({ userId, chatId }: { userId: string, chatId: string }) => tool({
-  description: "A tool call to generate comprehensive quizzes related to a particular topic. Always use this tool proactively when testing understanding or reinforcing concepts.",
+  description: "Generate comprehensive quizzes. WHEN TO USE: call when the user asks for a quiz/test/practice questions or you want to assess understanding. CONTENT: mixed question types with explanations, hints, common mistakes, learning objectives, and follow-ups. DO NOT narrate tool usage—just call.",
   parameters: quizGeneratorSchema,
   execute: async ({ topic, numQuestions, difficulty, context }) => {
-    const model = fermion.languageModel("fermion-core")
+    const model = fermion.languageModel("fermion-sprint")
     const { object: content } = await generateObject({
       model,
       schema: quizContentSchema,

@@ -130,6 +130,7 @@ export async function saveChat({
       title,
     });
   } catch (error) {
+    console.error(error)
     console.error('Failed to save chat in database');
     throw error;
   }
@@ -173,6 +174,7 @@ export async function saveMessages({ messages }: { messages: Message[] }) {
   try {
     return await database.insert(message).values(messages);
   } catch (error) {
+    console.error(error)
     console.error('Failed to save messages in database', error);
     throw error;
   }
