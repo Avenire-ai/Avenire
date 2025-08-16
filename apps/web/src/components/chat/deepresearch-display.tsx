@@ -8,17 +8,17 @@ import { cn } from "@avenire/ui/utils"
 import { Button } from "@avenire/ui/components/button"
 import { Tabs, TabsContent } from "@avenire/ui/components/tabs"
 import { Card, CardContent } from "@avenire/ui/components/card"
-import { Markdown } from "../markdown"
+import { Markdown } from "@avenire/ui/components/markdown"
 import { v4 as uuid } from "uuid"
 
 interface ResearchDisplayProps {
-  data: ResearchData
+  data: ResearchDataUnion
   className?: string
 }
 
 // Type definitions for research data
 interface ResearchData {
-  success: boolean
+  success: true
   data: {
     findings: Finding[]
     analysis: string
@@ -26,6 +26,21 @@ interface ResearchData {
     totalSteps: number
   }
 }
+
+interface ResearchDataError {
+  success: false
+  data: {
+    findings: Array<{
+      content: string
+      source: string
+    }>
+    completedSteps: number
+    totalSteps: number
+  }
+  error: string
+}
+
+type ResearchDataUnion = ResearchData | ResearchDataError | undefined
 
 interface Finding {
   description: string
@@ -107,6 +122,18 @@ const ResearchDisplay = React.memo(({ data, className }: ResearchDisplayProps) =
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading research data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Handle error case
+  if (!data.success) {
+    return (
+      <div className="flex items-center justify-center h-[550px] border rounded-lg bg-destructive/10 backdrop-blur-sm">
+        <div className="text-center">
+          <div className="h-8 w-8 border-4 border-destructive border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-destructive">Research failed: {data.error}</p>
         </div>
       </div>
     )

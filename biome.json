@@ -24,7 +24,8 @@
         "useSelfClosingElements": "off",
         "noNonNullAssertion": "off",
         "useConsistentArrayType": "off",
-        "useShorthandArrayType": "off"
+        "useShorthandArrayType": "off",
+        "useSingleCaseStatement": "off"
       },
       "nursery": {
         "useSortedClasses": "off",

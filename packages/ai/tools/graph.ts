@@ -194,7 +194,7 @@ const graphSchema = z.object({
 
 export const graphTool = tool({
   description: "Interactive math graphing (Desmos LaTeX). WHEN TO USE: call immediately for coordinate geometry, algebraic functions, polynomials, basic calculus visualizations, inequalities, piecewise, parametric/polar curves where interactivity helps exploration. DO NOT narrate tool usage—just call. ALWAYS include sliders for parameters (a,b,c,...) as separate expressions with sliderBounds; add animations (t) where useful; use draggable points when appropriate; set domain/range thoughtfully. DECISION: For simple-to-intermediate math education, prioritize this tool. If a static high-fidelity figure is also helpful, invoke plotTool as well. TRIGGERS: equations like y=f(x), implicit curves, inequalities, piecewise, parametric (x(t),y(t)), polar r=f(theta), requests to \"explore\", \"tune\", or \"interactive\" graphs.",
-  parameters: graphSchema,
+  inputSchema: graphSchema,
   execute: async ({ expressions }) => {
     const exp = expressions.map(({ latex, sliderBounds, lineStyle, opacity, domain, range, label }) => ({
       latex,

@@ -1,6 +1,6 @@
 'use client';
 
-import type { UIMessage } from 'ai';
+import type { UIDataTypes, UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle } from 'lucide-react';
@@ -23,6 +23,7 @@ import { MermaidDiagram } from "../mermaid"
 import { Canvas, type Mode } from './canvas/canvas';
 import { regenerateMessage } from './regenerate-message';
 import { MatplotlibRenderer } from "../matplotlib-renderer";
+import { OutlineAssistantUITools } from '@avenire/ai';
 
 // Error types for better error handling
 type MessageErrorType =
@@ -64,7 +65,7 @@ const PurePreviewMessage = ({
   openCanvas
 }: {
   chatId: string,
-  message: UIMessage;
+  message: UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>;
   isLoading: boolean;
   setMessages: UseChatHelpers['setMessages'];
   error: UseChatHelpers['error'];
@@ -73,7 +74,7 @@ const PurePreviewMessage = ({
   isReadonly: boolean;
 }) => {
   const { data: dataStream, messages } = useChat({
-    id: chatId
+    id: chatId,
   });
   const [researchData, setResearchData] = useState<Array<any>>([])
   const { addExpression, clearGraph } = useGraphStore()
@@ -136,12 +137,12 @@ const PurePreviewMessage = ({
           )}
 
           <div className={`flex flex-col gap-4 w-full ${message.role === "user" && "items-end"}`}>
-            {message.experimental_attachments && (
+            {message.parts.filter((part) => part.type === 'file') && (
               <div
                 data-testid="message-attachments"
                 className="flex flex-row justify-end gap-2"
               >
-                {message.experimental_attachments.map((attachment) => (
+                {message.parts.filter((part) => part.type === 'file').map((attachment) => (
                   <PreviewAttachment
                     key={attachment.url}
                     attachment={attachment}
@@ -158,186 +159,175 @@ const PurePreviewMessage = ({
               const { type } = part;
               const key = `message-${message.id}-part-${index}`;
 
-              if (type === 'reasoning') {
-                return (
-                  <MessageReasoning
-                    key={key}
-                    isLoading={isLoading}
-                    reasoning={part.reasoning}
-                  />
-                );
-              }
-
-              if (type === 'text') {
-                return (
-                  <div key={key} className="flex flex-row gap-2 items-start">
-                    <div
-                      data-testid="message-content"
-                      className={cn('flex flex-col gap-4 w-full',
-                        message.role === 'user' && 'bg-accent-foreground text-accent px-3 py-2 rounded-xl'
-                      )}
-                    >
-                      {message.role === 'user' ? (
-                        <p className="text-sm" key={key}>
-                          {part.text}
-                        </p>
-                      ) : (
-                        <Markdown content={part.text} id={key} />
-                      )}
+              switch (type) {
+                case 'reasoning':
+                  return (
+                    <MessageReasoning
+                      key={key}
+                      isLoading={isLoading}
+                      reasoning={part.text}
+                    />
+                  );
+                case 'text':
+                  return (
+                    <div key={key} className="flex flex-row gap-2 items-start">
+                      <div
+                        data-testid="message-content"
+                        className={cn('flex flex-col gap-4 w-full',
+                          message.role === 'user' && 'bg-accent-foreground text-accent px-3 py-2 rounded-xl'
+                        )}
+                      >
+                        {message.role === 'user' ? (
+                          <p className="text-sm" key={key}>
+                            {part.text}
+                          </p>
+                        ) : (
+                          <Markdown content={part.text} id={key} />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              }
-
-              if (type === 'tool-invocation') {
-                const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
-
-                if (state === 'call') {
-                  const { args } = toolInvocation;
-
-                  switch (toolName) {
-                    case "flashcardGeneratorTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full animate-pulse">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-primary animate-bounce" />
-                                <CardTitle className="text-base">Generating Flashcards...</CardTitle>
-                              </div>
-                              <CardDescription>
-                                The AI is preparing your flashcards. Please wait.
-                              </CardDescription>
-                            </CardHeader>
-                          </Card>
-                        </div>
-                      );
-                    case "quizGeneratorTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full animate-pulse">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <HelpCircle className="h-4 w-4 text-primary animate-bounce" />
-                                <CardTitle className="text-base">Generating Quiz...</CardTitle>
-                              </div>
-                              <CardDescription>
-                                The AI is preparing your quiz. Please wait.
-                              </CardDescription>
-                            </CardHeader>
-                          </Card>
-                        </div>
-                      );
-                    case "graphTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              clearGraphOnNewMessage();
-                              addExpression(args.expressions);
-                              openCanvas("graph");
-                            }}
-                            className="transition-colors"
-                          >
-                            <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
-                          </Button>
-                        </div>
-                      );
-                    default:
-                      break;
+                  );
+                case 'tool-flashcardGeneratorTool': {
+                  const { input, output, state } = part
+                  if (state === "input-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <Card className="w-full animate-pulse">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-primary animate-bounce" />
+                              <CardTitle className="text-base">Generating Flashcards...</CardTitle>
+                            </div>
+                            <CardDescription>
+                              The AI is preparing your flashcards. Please wait.
+                            </CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </div>
+                    )
                   }
-                }
-
-                if (state === 'result') {
-                  const { result, args } = toolInvocation;
-
-                  switch (toolName) {
-                    case "flashcardGeneratorTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Flashcards on {result.topic} Ready</CardTitle>
-                              </div>
-                              <CardDescription>
-                                {result.count} flashcards have been generated
-                              </CardDescription>
-                            </CardHeader>
-                            <CardFooter>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openCanvas("flashcards")}
-                                className="w-full transition-colors"
-                              >
-                                <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        </div>
-                      );
-                    case "quizGeneratorTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Card className="w-full">
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center gap-2">
-                                <HelpCircle className="h-4 w-4 text-primary" />
-                                <CardTitle className="text-base">Quiz on {result.topic} Ready</CardTitle>
-                              </div>
-                              <CardDescription>
-                                {result.count} questions have been generated
-                              </CardDescription>
-                            </CardHeader>
-                            <CardFooter>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openCanvas("quiz")}
-                                className="w-full transition-colors"
-                              >
-                                <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        </div>
-                      );
-                    case "deepResearch":
-                      if (researchData.length <= 0) {
-                        return <ResearchDisplay data={result} />;
-                      }
-                    case "graphTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              clearGraphOnNewMessage();
-                              addExpression(args.expressions);
-                              openCanvas("graph");
-                            }}
-                            className="transition-colors"
-                          >
-                            <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
-                          </Button>
-                        </div>
-                      );
-                    case "plotTool":
-                      return (
-                        <div key={key} className="flex flex-col items-start gap-2">
-                          <MatplotlibRenderer code={result as string} />
-                        </div>
-                      );
-                    default:
-                      break;
+                  if (state === "output-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <Card className="w-full">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="h-4 w-4 text-primary" />
+                              <CardTitle className="text-base">Flashcards on {output.topic} Ready</CardTitle>
+                            </div>
+                            <CardDescription>
+                              {output.count} flashcards have been generated
+                            </CardDescription>
+                          </CardHeader>
+                          <CardFooter>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openCanvas("flashcards")}
+                              className="w-full transition-colors"
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" /> View Flashcards
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      </div>
+                    )
                   }
+                  break;
                 }
+                case 'tool-quizGeneratorTool': {
+                  const { input, output, state } = part
+                  if (state === "input-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <Card className="w-full animate-pulse">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <HelpCircle className="h-4 w-4 text-primary animate-bounce" />
+                              <CardTitle className="text-base">Generating Quiz...</CardTitle>
+                            </div>
+                            <CardDescription>
+                              The AI is preparing your quiz. Please wait.
+                            </CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </div>
+                    )
+                  }
+                  if (state === "output-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <Card className="w-full">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <HelpCircle className="h-4 w-4 text-primary" />
+                              <CardTitle className="text-base">Quiz on {output.topic} Ready</CardTitle>
+                            </div>
+                            <CardDescription>
+                              {output.count} questions have been generated
+                            </CardDescription>
+                          </CardHeader>
+                          <CardFooter>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openCanvas("quiz")}
+                              className="w-full transition-colors"
+                            >
+                              <HelpCircle className="h-4 w-4 mr-2" /> Take Quiz
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      </div>
+                    )
+                  }
+                  break;
+                }
+                case 'tool-graphTool': {
+                  const { input, output, state } = part
+                  if (state === "output-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            clearGraphOnNewMessage();
+                            addExpression(input.expressions);
+                            openCanvas("graph");
+                          }}
+                          className="transition-colors"
+                        >
+                          <LineChart className="h-4 w-4 text-primary" /> Open in Canvas
+                        </Button>
+                      </div>
+                    )
+                  }
+                  break;
+                }
+                case 'tool-deepResearch': {
+                  const { input, output, state } = part
+                  if (state === "output-available" && researchData.length <= 0) {
+                      return <ResearchDisplay data={output} />;
+                    }
+                  break;
+                }
+                case 'tool-plotTool': {
+                  const { input, output, state } = part
+                  if (state === "input-available") {
+                    return null; // No UI for input state
+                  }
+                  if (state === "output-available") {
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-2">
+                        <MatplotlibRenderer code={output as string} />
+                      </div>
+                    )
+                  }
+                  break;
+                }
+                default:
+                  break;
               }
             })}
           </div>

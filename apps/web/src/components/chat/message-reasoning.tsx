@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDownIcon, LoaderIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Markdown } from '../markdown';
+import { Markdown } from '@avenire/ui/components/markdown';
 import { v4 as uuid } from "uuid";
 import { cn } from '@avenire/ui/utils';
 

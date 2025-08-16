@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@avenire/ui/components/badge"
 import { Card, CardContent } from "@avenire/ui/components/card"
 import { getQuizzesForChat } from "../../../actions/actions"
-import { Markdown } from "../../markdown"
+import { Markdown } from "@avenire/ui/components/markdown"
 import { type Quiz } from "../../../lib/canvas_types"
 import { useCanvasStore } from "../../../stores/canvasStore"
 

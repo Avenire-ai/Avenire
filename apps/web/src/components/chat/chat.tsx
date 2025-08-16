@@ -1,7 +1,7 @@
 'use client';
 
-import type { UIMessage } from 'ai';
-import { useChat } from '@ai-sdk/react';
+import type { UIMessage, OutlineAssistantUITools, UIDataTypes } from '@avenire/ai';
+import { Message, useChat } from '@ai-sdk/react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { MultimodalInput } from './multimodal-input';
@@ -58,7 +58,7 @@ const categorizeError = (error: Error): ChatErrorType => {
 
 interface ChatProps {
   id: string;
-  initialMessages: Array<UIMessage>;
+  initialMessages: Array<UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>>;
   selectedModel: string;
   selectedReasoningModel: string;
   isReadonly: boolean;
@@ -96,6 +96,7 @@ export function Chat({
       stack: error.stack,
       name: error.name
     });
+    console.error(error)
 
     // Categorize the error
     const errorType = categorizeError(error);
@@ -153,6 +154,7 @@ export function Chat({
     error
   } = useChat({
     id,
+    
     body: {
       chatId: id,
       selectedModel,
@@ -161,8 +163,8 @@ export function Chat({
       deepResearchEnabled: selectedMode === "research",
       ...(canvasData ? { canvasData } : {})
     },
-    initialMessages,
     experimental_throttle: 100,
+    initialMessages: initialMessages as any, // Fix type error by casting to any
     sendExtraMessageFields: true,
     generateId: generateUUID,
     onFinish: async () => {
@@ -193,7 +195,7 @@ export function Chat({
           error={error}
           chatId={id}
           status={status}
-          messages={messages}
+          messages={messages as UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>[]}
           setMessages={setMessages}
           reload={reload}
           openCanvas={openCanvas}
@@ -241,7 +243,7 @@ export function Chat({
                 stop={stop}
                 attachments={attachments}
                 setAttachments={setAttachments}
-                messages={messages}
+                messages={messages as UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>[]}
                 setMessages={setMessages}
                 append={append}
               />

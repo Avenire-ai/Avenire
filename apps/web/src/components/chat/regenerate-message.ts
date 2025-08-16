@@ -1,6 +1,6 @@
 import { deleteTrailingMessages } from '../../actions/actions';
 import type { UIMessage } from 'ai';
-import { UseChatHelpers } from 'ai/react';
+import { UseChatHelpers } from '@ai-sdk/react';
 
 export async function regenerateMessage({
   message,

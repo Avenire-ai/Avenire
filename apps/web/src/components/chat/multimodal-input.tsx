@@ -1,6 +1,6 @@
 'use client';
 
-import type { Message, UIMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import type React from 'react';
 import {
   useRef,

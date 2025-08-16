@@ -10,7 +10,7 @@ import { Badge } from "@avenire/ui/components/badge"
 import { useIsMobile as useMobile } from "@avenire/ui/src/hooks/use-mobile"
 import { Card, CardContent } from "@avenire/ui/components/card"
 import { getFlashcardsForChat } from "../../../actions/actions"
-import { Markdown } from "../../markdown"
+import { Markdown } from "@avenire/ui/components/markdown"
 import { type Flashcard } from "../../../lib/canvas_types"
 import { useCanvasStore } from "../../../stores/canvasStore"
 

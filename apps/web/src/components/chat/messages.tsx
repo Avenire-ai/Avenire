@@ -1,4 +1,4 @@
-import { UIMessage } from 'ai';
+import { UIMessage, UIDataTypes, OutlineAssistantUITools } from '@avenire/ai';
 import { PreviewMessage, ThinkingMessage } from './message';
 import { useScrollToBottom } from './use-scroll-to-bottom';
 import { Overview } from './overview';
@@ -10,7 +10,7 @@ import { type Mode } from './canvas/canvas';
 interface MessagesProps {
   chatId: string;
   status: UseChatHelpers['status'];
-  messages: Array<UIMessage>;
+  messages: Array<UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>>;
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   error: UseChatHelpers['error'];

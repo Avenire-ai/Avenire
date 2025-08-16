@@ -26,8 +26,8 @@
   "dependencies": {
     "@avenire/typescript-config": "*",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.40.0",
-    "postgres": "^3.4.5",
+    "drizzle-orm": "^0.40.1",
+    "postgres": "^3.4.7",
     "server-only": "^0.0.1"
   }
 }
