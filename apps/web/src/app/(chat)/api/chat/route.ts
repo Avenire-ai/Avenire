@@ -145,7 +145,15 @@ export async function POST(req: Request) {
           model: thinkingEnabled ? reasoningModel : model,
           system: instructions,
           messages,
-          maxTokens: 1600,
+          maxTokens: 6000,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                reasoningBudget: thinkingEnabled ? 1024 : 600,
+                includeThoughts: true
+              },
+            }
+          },
           tools: {
             graphTool,
             quizGeneratorTool: quizGeneratorTool({
