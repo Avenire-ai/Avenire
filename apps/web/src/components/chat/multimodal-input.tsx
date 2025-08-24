@@ -1,6 +1,5 @@
 'use client';
 
-import type { UIMessage } from 'ai';
 import type React from 'react';
 import {
   useRef,
@@ -21,7 +20,6 @@ import { PreviewAttachment, Attachment } from './preview-attachment';
 import { Button } from '@avenire/ui/components/button';
 import { Textarea } from '@avenire/ui/components/textarea';
 import equal from 'fast-deep-equal';
-import { UseChatHelpers } from '@ai-sdk/react';
 import { cn } from '@avenire/ui/utils';
 import { useUploadThing } from '../../lib/uploadClient';
 import { v4 as uuid } from "uuid"
@@ -31,6 +29,8 @@ import { ToggleGroup, ToggleGroupItem } from "@avenire/ui/components/toggle-grou
 import { useWhiteboardStore } from "../../stores/whiteboardStore";
 import { exportToBlob } from '@excalidraw/excalidraw';
 import { regenerateMessage } from './regenerate-message';
+import { ToolType, UIMessage, UIDataTypes } from '@avenire/ai/tools/tools.types';
+import { UseChatHelpers } from '@ai-sdk/react';
 
 // Error types for better error handling
 type InputErrorType =
@@ -71,7 +71,6 @@ function PureMultimodalInput({
   stop,
   attachments,
   setAttachments,
-  setData,
   messages,
   reload,
   selectedMode,
@@ -81,20 +80,19 @@ function PureMultimodalInput({
   setMessages,
 }: {
   chatId: string;
-  input: UseChatHelpers['input'];
-  setInput: UseChatHelpers['setInput'];
-  setData: UseChatHelpers['setData'];
-  status: UseChatHelpers['status'];
-  stop: () => void;
+  input: string;
+  setInput: (input: string) => void;
+  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['status'];
+  stop: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['stop'];
   selectedMode: string;
   setSelectedMode: (mode: string) => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
-  messages: Array<UIMessage>;
-  setMessages: UseChatHelpers['setMessages'];
-  append: UseChatHelpers['append'];
-  reload: UseChatHelpers['reload'];
-  handleSubmit: UseChatHelpers['handleSubmit'];
+  messages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['messages'];
+  setMessages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['setMessages'];
+  append: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['sendMessage'];
+  reload: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['regenerate'];
+  handleSubmit: (files: Attachment[], e?: SubmitEvent) => void
   className?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -287,12 +285,9 @@ function PureMultimodalInput({
       ? [...attachments, whiteboardAttachment]
       : attachments;
 
-    handleSubmit(undefined, {
-      experimental_attachments: allAttachments,
-    });
+    handleSubmit(allAttachments);
 
     setAttachments([]);
-    setData([])
     setLocalStorageInput('');
     resetHeight();
 
@@ -502,7 +497,7 @@ function PureAttachmentsButton({
   status,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-  status: UseChatHelpers['status'];
+  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['status'];
 }) {
   return (
     <Button
@@ -537,11 +532,11 @@ function PureSendButton({
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
-  status: UseChatHelpers['status'];
-  stop: () => void;
-  reload: UseChatHelpers['reload'];
-  messages: Array<UIMessage>;
-  setMessages: UseChatHelpers['setMessages'];
+  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['status'];
+  stop: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['stop'];
+  reload: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['regenerate'];
+  messages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['messages'];
+  setMessages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['setMessages'];
 }) {
   // Show reload if error and last message is from user
   if (status === 'error' && messages.at(-1)?.role === "user") {

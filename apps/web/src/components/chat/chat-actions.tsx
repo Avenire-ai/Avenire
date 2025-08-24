@@ -16,7 +16,7 @@ import { cn } from '@avenire/ui/utils';
 
 interface MessageActionsProps {
   message: UIMessage;
-  reload: UseChatHelpers['reload'];
+  reload: () => void;
   isLoading: boolean;
   error: boolean;
   onDeleteTrailing?: () => Promise<void>;

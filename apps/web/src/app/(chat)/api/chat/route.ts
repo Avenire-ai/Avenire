@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["deepResearch", "plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
+    const activeTools: Array<"graphTool" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
 
 
     const instructions = deepResearchEnabled

@@ -1,9 +1,8 @@
 'use client';
 
-import type { UIDataTypes, UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'motion/react';
-import { memo, useEffect, useRef, useState } from 'react';
-import { Check, SparklesIcon, AlertCircle, BookOpen, HelpCircle } from 'lucide-react';
+import { memo, useState } from 'react';
+import { SparklesIcon, AlertCircle, BookOpen, HelpCircle, LineChart } from 'lucide-react';
 import { Markdown } from '../markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
@@ -12,18 +11,14 @@ import { MessageReasoning } from './message-reasoning';
 import { useChat, UseChatHelpers } from '@ai-sdk/react';
 import ResearchProcess from './deepresearch-process';
 import ResearchDisplay from './deepresearch-display';
-import dynamic from "next/dynamic"
-import { Button } from '@avenire/ui/src/components/button';
-import { LineChart } from "lucide-react"
 import { useGraphStore, clearGraphOnNewMessage } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
-import { deleteTrailingMessages } from '../../actions/actions';
-import { MermaidDiagram } from "../mermaid"
-import { Canvas, type Mode } from './canvas/canvas';
+import { type Mode } from './canvas/canvas';
 import { regenerateMessage } from './regenerate-message';
 import { MatplotlibRenderer } from "../matplotlib-renderer";
-import { OutlineAssistantUITools } from '@avenire/ai';
+import { ToolType, UIMessage, UIDataTypes } from '@avenire/ai/tools/tools.types';
+import { Button } from '@avenire/ui/src/components/button';
 
 // Error types for better error handling
 type MessageErrorType =
@@ -65,16 +60,19 @@ const PurePreviewMessage = ({
   openCanvas
 }: {
   chatId: string,
-  message: UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>;
+  message: UIMessage<unknown, UIDataTypes, ToolType>;
   isLoading: boolean;
-  setMessages: UseChatHelpers['setMessages'];
-  error: UseChatHelpers['error'];
-  reload: UseChatHelpers['reload'];
+  setMessages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['setMessages'];
+  error: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['error'];
+  reload: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['regenerate'];
   openCanvas: (mode?: Mode) => void
   isReadonly: boolean;
 }) => {
-  const { data: dataStream, messages } = useChat({
+  const { messages } = useChat({
     id: chatId,
+    onData: (dataStream) => {
+      setResearchData(dataStream as any)
+    }
   });
   const [researchData, setResearchData] = useState<Array<any>>([])
   const { addExpression, clearGraph } = useGraphStore()
@@ -86,11 +84,6 @@ const PurePreviewMessage = ({
       reload,
     });
   };
-
-  useEffect(() => {
-    if (!dataStream?.length || (messages.at(-1)?.id !== message.id)) { return };
-    setResearchData(dataStream)
-  }, [dataStream])
 
   return (
     <AnimatePresence>
@@ -308,8 +301,8 @@ const PurePreviewMessage = ({
                 case 'tool-deepResearch': {
                   const { input, output, state } = part
                   if (state === "output-available" && researchData.length <= 0) {
-                      return <ResearchDisplay data={output} />;
-                    }
+                    return <ResearchDisplay data={output} />;
+                  }
                   break;
                 }
                 case 'tool-plotTool': {
@@ -349,9 +342,11 @@ const PurePreviewMessage = ({
 export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
-    if (prevProps.isLoading !== nextProps.isLoading) { return false };
-    if (prevProps.message.id !== nextProps.message.id) { return false };
-    if (!equal(prevProps.message.parts, nextProps.message.parts)) { return false };
+    // Always re-render during streaming to show real-time updates
+    if (nextProps.isLoading) { return false; }
+    if (prevProps.isLoading !== nextProps.isLoading) { return false; }
+    if (prevProps.message.id !== nextProps.message.id) { return false; }
+    if (!equal(prevProps.message.parts, nextProps.message.parts)) { return false; }
 
     return true;
   },

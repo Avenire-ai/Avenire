@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata, ResolvingMetadata } from 'next';
 
-import { OutlineAssistantUITools, UIDataTypes, UIMessage, UIMessagePart } from '@avenire/ai';
+import { UIDataTypes, UIMessage, UIMessagePart, ToolType } from '@avenire/ai/tools/tools.types';
 import { getChatById, getMessagesByChatId } from '@avenire/database/queries';
 import { Message } from '@avenire/database/schema';
 import { Chat } from '../../../../components/chat/chat';
@@ -43,11 +43,11 @@ export default async function Page({ params, searchParams }: Props) {
     id,
   });
 
-  function convertToUIMessages(messages: Message[]): UIMessage<unknown, UIDataTypes, OutlineAssistantUITools>[] {
+  function convertToUIMessages(messages: Message[]): UIMessage<unknown, UIDataTypes, ToolType>[] {
     return messages.map((message) => ({
       id: message.id,
       role: message.role as 'user' | 'assistant' | 'system',
-      parts: message.parts as UIMessagePart<UIDataTypes, OutlineAssistantUITools>[],
+      parts: message.parts as UIMessagePart<UIDataTypes, ToolType>[],
       metadata: {
         createdAt: formatISO(message.createdAt),
       },
