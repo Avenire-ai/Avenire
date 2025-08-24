@@ -21,13 +21,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={"antialiased overflow-hidden"}>
+      {/* Load heavy scripts lazily to improve initial page load */}
       <Script
         src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"
-        strategy="beforeInteractive"
+        strategy="lazyOnload"
+        id="pyodide-script"
       />
       <Script
         src="https://www.desmos.com/api/v1.10/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"
-        strategy="beforeInteractive"
+        strategy="lazyOnload"
+        id="desmos-script"
       />
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>

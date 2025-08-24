@@ -24,9 +24,9 @@ const flashcardGeneratorSchema = z.object({
   context: z.string().optional().describe("Additional context about the user's current learning progress or specific areas of interest")
 });
 
-export const flashcardGeneratorTool = ({ userId, chatId }: { userId: string, chatId: string }) => tool({
+export const flashcardGeneratorTool = (userId?: string, chatId?: string) => tool({
   description: "Generate concise flashcards. WHEN TO USE: call when the user asks for flashcards, bite-sized study aids, or when summarizing into key points for spaced repetition. CONTENT: short Q/A with optional mnemonic and key takeaway. DO NOT narrate tool usage—just call.",
-  parameters: flashcardGeneratorSchema,
+  inputSchema: flashcardGeneratorSchema,
   execute: async ({ topic, numCards, difficulty, context }) => {
     const model = fermion.languageModel("fermion-sprint")
     const { object: content } = await generateObject({
@@ -62,8 +62,8 @@ Remember:
       id,
       content,
       topic,
-      userId,
-      chatId
+      userId: userId || "",
+      chatId: chatId || ""
     })
 
     return {

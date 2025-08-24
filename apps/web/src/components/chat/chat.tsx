@@ -1,6 +1,7 @@
 'use client';
 
-import type { UIMessage } from 'ai';
+import { DefaultChatTransport } from "ai"
+import { ToolType, UIMessagePart, UIDataTypes, UIMessage } from '@avenire/ai/tools/tools.types';
 import { useChat } from '@ai-sdk/react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
@@ -58,7 +59,7 @@ const categorizeError = (error: Error): ChatErrorType => {
 
 interface ChatProps {
   id: string;
-  initialMessages: Array<UIMessage>;
+  initialMessages: Array<UIMessage<unknown, UIDataTypes, ToolType>>;
   selectedModel: string;
   selectedReasoningModel: string;
   isReadonly: boolean;
@@ -75,6 +76,7 @@ export function Chat({
   const [selectedMode, setSelectedMode] = useState<string>("");
   const [canvasKey, setCanvasKey] = useState(0);
   const pathname = usePathname();
+  const [input, setInput] = useState('')
 
   const { mutate } = useSWRConfig();
   const isMobile = useIsMobile();
@@ -96,6 +98,7 @@ export function Chat({
       stack: error.stack,
       name: error.name
     });
+    console.error(error)
 
     // Categorize the error
     const errorType = categorizeError(error);
@@ -129,42 +132,53 @@ export function Chat({
     return data;
   }, [currentQuestion, currentFlashcard, graphExpressions]);
 
-  const handleToolCall = useCallback((toolCall: { name: string }) => {
-    if (toolCall.name === 'flashcardGeneratorTool' || toolCall.name === 'quizGeneratorTool') {
+  const handleToolCall = useCallback((part: UIMessagePart<UIDataTypes, ToolType>) => {
+    if (part.type === 'tool-flashcardGeneratorTool' || part.type === "tool-quizGeneratorTool") {
       setCanvasKey(prev => prev + 1);
       if (!isCanvasOpen) {
         setChatId(id)
-        openCanvas(toolCall.name === 'flashcardGeneratorTool' ? 'flashcards' : 'quiz');
+        openCanvas(part.type === 'tool-flashcardGeneratorTool' ? 'flashcards' : 'quiz');
       }
     }
   }, [isCanvasOpen, id, openCanvas]);
 
+  const handleSubmit = (files: Attachment[], e?: SubmitEvent) => {
+    e?.preventDefault();
+    // Map Attachment[] to File[] and create a FileList
+    const fileArray = files.map(att => att.file);
+    // Create a FileList from the array (using DataTransfer)
+    const dataTransfer = new DataTransfer();
+    fileArray.forEach(file => dataTransfer.items.add(file));
+    const fileList = dataTransfer.files;
+    append({ text: input, files: fileList });
+    setInput('');
+  };
+
   const {
     messages,
     setMessages,
-    handleSubmit,
-    input,
-    setData,
-    setInput,
-    append,
+    sendMessage: append,
     status,
     stop,
-    reload,
+    regenerate: reload,
     error
-  } = useChat({
+  } = useChat<UIMessage<unknown, UIDataTypes, ToolType>>({
     id,
-    body: {
-      chatId: id,
-      selectedModel,
-      selectedReasoningModel,
-      thinkingEnabled: selectedMode === "thinking",
-      deepResearchEnabled: selectedMode === "research",
-      ...(canvasData ? { canvasData } : {})
-    },
-    initialMessages,
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: {
+        chatId: id,
+        selectedModel,
+        selectedReasoningModel,
+        thinkingEnabled: selectedMode === "thinking",
+        deepResearchEnabled: selectedMode === "research",
+        ...(canvasData ? { canvasData } : {})
+      },
+    }),
     experimental_throttle: 100,
-    sendExtraMessageFields: true,
+    messages: initialMessages, // Fix type error by casting to any
     generateId: generateUUID,
+
     onFinish: async () => {
       mutate('/api/history');
       // Update page title when chat is finished
@@ -173,13 +187,15 @@ export function Chat({
         document.title = `${title} | Avenire`;
       }
       messages.at(-1)?.parts.forEach((part, i) => {
-        if (part.type === "tool-invocation") {
-          handleToolCall({ name: part.toolInvocation.toolName })
+        if (part.type.includes("tool-")) {
+          handleToolCall(part)
         }
       })
     },
     onError: handleError,
   });
+
+
 
   return (
     <div className={"flex h-screen w-full"}>
@@ -236,7 +252,6 @@ export function Chat({
                 selectedMode={selectedMode}
                 setSelectedMode={setSelectedMode}
                 handleSubmit={handleSubmit}
-                setData={setData}
                 status={status}
                 stop={stop}
                 attachments={attachments}

@@ -1,4 +1,4 @@
-import { UIMessage } from 'ai';
+import { UIMessage, UIDataTypes, ToolType } from '@avenire/ai/tools/tools.types';
 import { PreviewMessage, ThinkingMessage } from './message';
 import { useScrollToBottom } from './use-scroll-to-bottom';
 import { Overview } from './overview';
@@ -9,11 +9,11 @@ import { type Mode } from './canvas/canvas';
 
 interface MessagesProps {
   chatId: string;
-  status: UseChatHelpers['status'];
-  messages: Array<UIMessage>;
-  setMessages: UseChatHelpers['setMessages'];
-  reload: UseChatHelpers['reload'];
-  error: UseChatHelpers['error'];
+  status: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['status'];
+  messages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['messages'];
+  setMessages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['setMessages'];
+  reload: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['regenerate'];
+  error: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['error'];
   messagesContainerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   isReadonly: boolean;
@@ -68,10 +68,14 @@ function PureMessages({
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.status !== nextProps.status) { return false };
-  if (prevProps.status && nextProps.status) { return false };
-  if (prevProps.messages.length !== nextProps.messages.length) { return false };
-  if (!equal(prevProps.messages, nextProps.messages)) { return false };
+  // Always re-render during streaming to show real-time updates
+  if (nextProps.status === 'streaming') { return false; }
+  if (prevProps.status !== nextProps.status) { return false; }
+  if (prevProps.messages.length !== nextProps.messages.length) { return false; }
+
+
+
+  if (!equal(prevProps.messages, nextProps.messages)) { return false; }
 
   return true;
 });

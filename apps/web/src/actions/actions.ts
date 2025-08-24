@@ -1,6 +1,6 @@
 "use server";
 
-import { fermion, generateText, Message } from "@avenire/ai";
+import { fermion, generateText, UIMessage } from "@avenire/ai";
 import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimestamp, getFlashcardsByChatId, getQuizzesByChatId, getChatById } from "@avenire/database/queries";
 import { auth } from "@avenire/auth/server";
 import { UTApi } from "uploadthing/server";
@@ -46,7 +46,7 @@ export async function setMatplotlibCache(hash: string, url: string): Promise<boo
 export async function generateTitleFromUserMessage({
   message,
 }: {
-  message: Message;
+  message: UIMessage;
 }) {
   const { text: title } = await generateText({
     model: fermion.languageModel('fermion-sprint'),

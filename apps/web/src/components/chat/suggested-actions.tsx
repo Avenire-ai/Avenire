@@ -3,11 +3,13 @@
 import { motion } from 'motion/react';
 import { Button } from '@avenire/ui/components/button';
 import { memo } from 'react';
-import { UseChatHelpers } from '@ai-sdk/react';
+import { UIMessage, UseChatHelpers } from '@ai-sdk/react';
+import { ToolType, UIDataTypes } from '@avenire/ai/tools/tools.types';
+import { nanoid } from 'nanoid';
 
 interface SuggestedActionsProps {
   chatId: string;
-  append: UseChatHelpers['append'];
+  append: (message: UIMessage<unknown, UIDataTypes, ToolType>) => void;
 }
 
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
@@ -55,7 +57,8 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
 
               append({
                 role: 'user',
-                content: suggestedAction.action,
+                id: nanoid(),
+                parts: [{ type: "text", text: suggestedAction.action }],
               });
             }}
             className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"

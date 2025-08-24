@@ -1,6 +1,6 @@
-import type { Message } from 'ai';
+import type { UIMessage } from 'ai';
 import { useCopyToClipboard } from 'usehooks-ts';
-import { UseChatHelpers } from "ai/react"
+import { UseChatHelpers } from "@ai-sdk/react"
 
 import { CopyIcon, RotateCcw } from 'lucide-react';
 import { Button } from '@avenire/ui/components/button';
@@ -15,8 +15,8 @@ import { toast } from 'sonner';
 import { cn } from '@avenire/ui/utils';
 
 interface MessageActionsProps {
-  message: Message;
-  reload: UseChatHelpers['reload'];
+  message: UIMessage;
+  reload: () => void;
   isLoading: boolean;
   error: boolean;
   onDeleteTrailing?: () => Promise<void>;

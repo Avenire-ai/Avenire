@@ -15,7 +15,7 @@ const openrouter = createOpenRouter({
 
 export const fermion = customProvider({
   languageModels: {
-    "fermion-sprint": google("gemma-3-27b-it"),
+    "fermion-sprint": google("gemini-2.0-flash"),
     "fermion-core": google("gemini-2.5-flash"),
     "fermion-apex": google("gemini-2.5-pro"),
     "fermion-thinking": google("gemini-2.5-pro"),

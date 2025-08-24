@@ -3,7 +3,7 @@
 import { CheckIcon, CopyIcon } from 'lucide-react';
 import type { ComponentProps, HTMLAttributes, ReactNode } from 'react';
 import { createContext, useContext, useState } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { LazyReactSyntaxHighlighter as SyntaxHighlighter } from "./LazyComponents"
 import {
   oneDark,
   oneLight,

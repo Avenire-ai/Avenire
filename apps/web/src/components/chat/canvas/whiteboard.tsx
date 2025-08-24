@@ -7,13 +7,7 @@ import "@excalidraw/excalidraw/index.css";
 import { useTheme } from "next-themes"
 import { useWhiteboardStore } from "../../../stores/whiteboardStore";
 
-const Excalidraw = dynamic(
-  async () => (await import("@excalidraw/excalidraw")).Excalidraw,
-  {
-    ssr: false,
-  },
-);
-
+import {LazyExcalidraw as Excalidraw} from "../../LazyComponents"
 
 export function WhiteboardViewer() {
 

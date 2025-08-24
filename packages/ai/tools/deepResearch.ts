@@ -1,14 +1,45 @@
-import { DataStreamWriter, generateText, LanguageModel, tool } from "ai";
+import { UIMessageStreamWriter, generateText, LanguageModel, tool } from "ai";
 import { z } from "zod";
 import { extract, search } from "./search";
 
-export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWriter, model: LanguageModel }) => tool({
+export const deepResearch = (dataStream?: UIMessageStreamWriter, model?: LanguageModel) => tool({
   description: "Deep multi-step web research. WHEN TO USE: call when the user requests background research, literature review, comparisons, source gathering, pros/cons, timelines, or asks to 'research/investigate/find sources'. BEHAVIOR: orchestrates web search, extraction, iterative analysis, gap-finding, and final synthesis with citations. OUTPUT: returns a long-form analysis and a list of sources; streams progress via data events. DO NOT narrate the intention to use this tool—just call it.",
-  parameters: z.object({
+  inputSchema: z.object({
     topic: z.string().describe('The topic or question to research'),
     maxDepth: z.number().describe('The maximum depth to which the research can to go through. Defaults to 7.').optional(),
   }),
+  outputSchema: z.union([
+    z.object({
+      success: z.literal(true),
+      data: z.object({
+        findings: z.array(z.object({
+          url: z.string(),
+          title: z.string(),
+          description: z.string(),
+        })),
+        analysis: z.string(),
+        completedSteps: z.number(),
+        totalSteps: z.number(),
+      }),
+    }),
+    z.object({
+      success: z.literal(false),
+      data: z.object({
+        findings: z.array(z.object({
+          content: z.string(),
+          source: z.string(),
+        })),
+        completedSteps: z.number(),
+        totalSteps: z.number(),
+      }),
+      error: z.string(),
+    }),
+    z.undefined(),
+  ]),
   execute: async ({ topic, maxDepth = 3 }) => {
+    if (!dataStream || !model) {
+      return
+    }
     const startTime = Date.now();
     const timeLimit = 6 * 80 * 1000; // Extended from 4.5 to 6 minutes
     const researchState = {
@@ -23,14 +54,15 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
       completedSteps: 0,
       totalExpectedSteps: maxDepth * 5
     }
-    dataStream.writeData({
-      type: "progress-init",
-      content: {
+    dataStream.write({
+      type: "data-progress-init",
+      data: {
         type: "thought",
         message: `Starting a research on the topic: ${topic}`,
         timeStamp: new Date().toISOString(),
         maxDepth,
-      }
+      },
+      transient: true,
     })
 
     const addSource = (source: {
@@ -39,9 +71,10 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
       description: string;
     }) => {
       researchState.sources.push(source)
-      dataStream.writeData({
-        type: 'source-delta',
-        content: source,
+      dataStream.write({
+        type: 'data-source-delta',
+        data: source,
+        transient: true
       });
     };
 
@@ -60,14 +93,15 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
       if (activity.status === 'complete') {
         researchState.completedSteps++;
       }
-      dataStream.writeData({
-        type: 'activity-delta',
-        content: {
+      dataStream.write({
+        type: 'data-activity-delta',
+        data: {
           ...activity,
           depth: researchState.currentDepth,
           completedSteps: researchState.completedSteps,
           totalSteps: researchState.totalExpectedSteps,
         },
+        transient: true
       });
     };
 
@@ -175,14 +209,15 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
 
         researchState.currentDepth++;
 
-        dataStream.writeData({
-          type: 'depth-delta',
-          content: {
+        dataStream.write({
+          type: 'data-depth-delta',
+          data: {
             current: researchState.currentDepth,
             max: maxDepth,
             completedSteps: researchState.completedSteps,
             totalSteps: researchState.totalExpectedSteps,
           },
+          transient: true
         });
 
         // Search phase
@@ -304,7 +339,6 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
 
       const finalAnalysis = await generateText({
         model,
-        maxTokens: 16000,
         prompt: `Create a comprehensive long analysis of ${topic} based on these findings:
                           ${researchState.findings
             .map((f) => `[From ${f.source}]: ${f.content}`)
@@ -323,9 +357,10 @@ export const deepResearch = ({ dataStream, model }: { dataStream: DataStreamWrit
         depth: researchState.currentDepth,
       });
 
-      dataStream.writeData({
-        type: 'finish',
-        content: finalAnalysis.text,
+      dataStream.write({
+        type: 'data-finish',
+        data: finalAnalysis.text,
+        transient: true
       });
 
       return {

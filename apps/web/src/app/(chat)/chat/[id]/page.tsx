@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import { Metadata, ResolvingMetadata } from 'next';
 
-import { Attachment, UIMessage } from '@avenire/ai';
+import { UIDataTypes, UIMessage, UIMessagePart, ToolType } from '@avenire/ai/tools/tools.types';
 import { getChatById, getMessagesByChatId } from '@avenire/database/queries';
 import { Message } from '@avenire/database/schema';
 import { Chat } from '../../../../components/chat/chat';
+import { formatISO } from 'date-fns';
 
 type Props = {
   params: Promise<{ id: string }>
@@ -42,16 +43,14 @@ export default async function Page({ params, searchParams }: Props) {
     id,
   });
 
-  function convertToUIMessages(messages: Array<Message>): Array<UIMessage> {
+  function convertToUIMessages(messages: Message[]): UIMessage<unknown, UIDataTypes, ToolType>[] {
     return messages.map((message) => ({
       id: message.id,
-      parts: message.parts as UIMessage['parts'],
-      role: message.role as UIMessage['role'],
-      // Note: content will soon be deprecated in @ai-sdk/react
-      content: '',
-      createdAt: message.createdAt,
-      experimental_attachments:
-        (message.attachments as Array<Attachment>) ?? [],
+      role: message.role as 'user' | 'assistant' | 'system',
+      parts: message.parts as UIMessagePart<UIDataTypes, ToolType>[],
+      metadata: {
+        createdAt: formatISO(message.createdAt),
+      },
     }));
   }
 

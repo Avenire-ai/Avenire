@@ -1,5 +1,4 @@
-import { Message, smoothStream, streamText, fermion, graphTool, FERMION_PROMPT, createDataStreamResponse, deepResearch, LanguageModel, appendResponseMessages, DEEP_RESEARCH_PROMPT, flashcardGeneratorTool, quizGeneratorTool, plotTool } from "@avenire/ai"
-import { getTrailingMessageId, sanitizeResponseMessages } from "@avenire/ai/utils"
+import { smoothStream, streamText, fermion, graphTool, FERMION_PROMPT, createUIMessageStream, createUIMessageStreamResponse, deepResearch, LanguageModel, DEEP_RESEARCH_PROMPT, flashcardGeneratorTool, quizGeneratorTool, plotTool, stepCountIs, UIMessage, convertToModelMessages } from "@avenire/ai"
 import { auth } from "@avenire/auth/server";
 import { deleteChatById, getChatById, getChatsByUserId, getMessagesByChatId, saveChat, saveMessages } from "@avenire/database/queries"
 import { generateTitleFromUserMessage } from "../../../../actions/actions"
@@ -69,7 +68,7 @@ export async function POST(req: Request) {
       deepResearchEnabled,
       canvasData,
     }: {
-      messages: Message[];
+      messages: UIMessage[];
       chatId: string;
       selectedModel: "fermion-sprint" | "fermion-core" | "fermion-apex";
       selectedReasoningModel: "fermion-reasoning" | "fermion-reasoning-lite";
@@ -109,7 +108,7 @@ export async function POST(req: Request) {
           id: userMessage.id,
           role: 'user',
           parts: userMessage.parts,
-          attachments: userMessage.experimental_attachments ?? [],
+          attachments: userMessage.parts.filter((part) => part.type === 'file') ?? [],
           createdAt: new Date(),
         },
       ],
@@ -124,7 +123,7 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "deepResearch" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["deepResearch", "plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
+    const activeTools: Array<"graphTool" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
 
 
     const instructions = deepResearchEnabled
@@ -139,13 +138,12 @@ export async function POST(req: Request) {
       );
 
 
-    return createDataStreamResponse({
-      execute: async (dataStream) => {
+    const stream = createUIMessageStream({
+      execute: ({ writer }) => {
         const result = streamText({
           model: thinkingEnabled ? reasoningModel : model,
           system: instructions,
-          messages,
-          maxTokens: 6000,
+          messages: convertToModelMessages(messages),
           providerOptions: {
             google: {
               thinkingConfig: {
@@ -156,68 +154,45 @@ export async function POST(req: Request) {
           },
           tools: {
             graphTool,
-            quizGeneratorTool: quizGeneratorTool({
-              userId: session.user.id,
+            quizGeneratorTool: quizGeneratorTool(
+              session.user.id,
               chatId
-            }),
-            flashcardGeneratorTool: flashcardGeneratorTool({
-              userId: session.user.id,
+            ),
+            flashcardGeneratorTool: flashcardGeneratorTool(
+              session.user.id,
               chatId
-            }),
-            deepResearch: deepResearch({
-              dataStream,
-              model: reasoningModel
-            }),
+            ),
+            deepResearch: deepResearch(
+              writer,
+              reasoningModel
+            ),
             plotTool,
           },
-          maxSteps: 5,
+          stopWhen: stepCountIs(5),
           experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
-          experimental_continueSteps: true,
-          experimental_generateMessageId: uuid,
-          onFinish: async ({ response }) => {
-            if (session.user?.id) {
-              try {
-                const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === 'assistant',
-                  ),
-                });
 
-                if (!assistantId) {
-                  throw new Error('No assistant message found!');
-                }
-
-                const [, assistantMessage] = appendResponseMessages({
-                  messages: [userMessage],
-                  responseMessages: response.messages,
-                });
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId,
-                      role: assistantMessage.role,
-                      parts: assistantMessage.parts,
-                      attachments:
-                        assistantMessage.experimental_attachments ?? [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-
-              } catch (error) {
-                console.error('Failed to save chat');
-                console.error(error)
-              }
-            }
-          }
         })
 
         result.consumeStream();
 
-        result.mergeIntoDataStream(dataStream, {
+        writer.merge(result.toUIMessageStream({
           sendReasoning: true,
+          sendSources: true,
+        }))
+
+      },
+      generateId: uuid,
+      onFinish: async ({ messages }) => {
+        await saveMessages({
+          messages: messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            parts: message.parts,
+            createdAt: new Date(),
+            attachments: [],
+            chatId,
+          })),
         });
       },
       onError: (error) => {
@@ -226,6 +201,7 @@ export async function POST(req: Request) {
       },
     })
 
+    return createUIMessageStreamResponse({ stream })
   } catch (error) {
     return NextResponse.json({ error }, { status: 400 });
   }
