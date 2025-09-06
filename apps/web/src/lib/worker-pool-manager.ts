@@ -25,7 +25,7 @@ class WorkerPoolManager {
   async warmPool(): Promise<void> {
     if (this.initialized) return;
     if (this.warmingPromise) return this.warmingPromise;
-    
+
     this.warmingPromise = this._warmPool();
     return this.warmingPromise;
   }
@@ -39,7 +39,6 @@ class WorkerPoolManager {
     }
     const workers = await Promise.all(promises);
     this.pool = workers;
-    console.log(`[WorkerPoolManager] Pre-warmed ${this.poolSize} Pyodide workers`);
   }
 
   private createWorker(preload = false): Promise<WorkerHandle> {

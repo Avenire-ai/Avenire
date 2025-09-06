@@ -5,12 +5,15 @@ import { getTopChatsByUserId, getMessageById, deleteMessagesByChatIdAfterTimesta
 import { auth } from "@avenire/auth/server";
 import { UTApi } from "uploadthing/server";
 import { createClient } from "redis";
+import { log } from "@avenire/logger/server";
 
 const redis = createClient({
   url: process.env.REDIS_URL,
 });
 
-redis.on('error', (err) => console.error('Redis Client Error', err));
+redis.on('error', (err) => {
+  log.error('Redis Client Error', err);
+});
 
 async function getRedisClient() {
   if (!redis.isOpen) {
@@ -26,7 +29,7 @@ export async function getMatplotlibCache(hash: string): Promise<string | null> {
     const url = await client.get(`matplotlib-cache:${hash}`);
     return url || null;
   } catch (error) {
-    console.error('Redis GET error:', error);
+    log.error('Redis GET error:', { error, hash });
     return null;
   }
 }
@@ -38,10 +41,10 @@ export async function setMatplotlibCache(hash: string, url: string): Promise<boo
     await client.set(`matplotlib-cache:${hash}`, url);
     return true;
   } catch (error) {
-    console.error('Redis SET error:', error);
+    log.error('Redis SET error:', { error, hash });
     return false;
   }
-} 
+}
 
 export async function generateTitleFromUserMessage({
   message,
@@ -50,7 +53,7 @@ export async function generateTitleFromUserMessage({
 }) {
   const { text: title } = await generateText({
     model: fermion.languageModel('fermion-sprint'),
-    prompt: `\n
+    prompt: `
     - you will generate a short title based on the first message a user begins a conversation with
     - ensure it is not more than 80 characters long
     - the title should be a summary of the user's message
@@ -69,7 +72,7 @@ export async function deleteFile(url: string) {
     await utapi.deleteFiles(newUrl);
     return { success: true, error: null }
   } catch (error) {
-    console.error(error)
+    log.error('Failed to delete file from UploadThing', { error, url });
     return { success: false, error }
   }
 
@@ -80,7 +83,7 @@ export async function getRecentChats(userId: string) {
     const chats = await getTopChatsByUserId({ id: userId });
     return { chats, error: null };
   } catch (error) {
-    console.error('Failed to get recent chats:', error);
+    log.error('Failed to get recent chats', { error, userId });
     return { chats: [], error };
   }
 }
@@ -99,7 +102,7 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
 
     return { success: true, error: null };
   } catch (error) {
-    console.error('Failed to delete trailing messages:', error);
+    log.error('Failed to delete trailing messages', { error, messageId: id });
     return { success: false, error };
   }
 }
@@ -109,7 +112,7 @@ export async function getFlashcardsForChat({ chatId }: { chatId: string }) {
     const flashcards = await getFlashcardsByChatId({ id: chatId });
     return { flashcards, error: null };
   } catch (error) {
-    console.error('Failed to get flashcards for chat:', error);
+    log.error('Failed to get flashcards for chat', { error, chatId });
     return { flashcards: [], error };
   }
 }
@@ -119,7 +122,7 @@ export async function getQuizzesForChat({ chatId }: { chatId: string }) {
     const quizzes = await getQuizzesByChatId({ id: chatId });
     return { quizzes, error: null };
   } catch (error) {
-    console.error('Failed to get quizzes for chat:', error);
+    log.error('Failed to get quizzes for chat', { error, chatId });
     return { quizzes: [], error };
   }
 }
@@ -129,7 +132,7 @@ export async function getChatTitle({ chatId }: { chatId: string }) {
     const chat = await getChatById({ id: chatId });
     return { title: chat?.title || 'Untitled Chat', error: null };
   } catch (error) {
-    console.error('Failed to get chat title:', error);
+    log.error('Failed to get chat title', { error, chatId });
     return { title: 'Untitled Chat', error };
   }
 }

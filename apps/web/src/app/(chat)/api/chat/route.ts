@@ -1,10 +1,11 @@
-import { smoothStream, streamText, fermion, graphTool, FERMION_PROMPT, createUIMessageStream, createUIMessageStreamResponse, deepResearch, LanguageModel, DEEP_RESEARCH_PROMPT, flashcardGeneratorTool, quizGeneratorTool, plotTool, stepCountIs, UIMessage, convertToModelMessages } from "@avenire/ai"
+import { smoothStream, streamText, fermion, graphTool, FERMION_PROMPT, createUIMessageStream, createUIMessageStreamResponse, LanguageModel, flashcardGeneratorTool, quizGeneratorTool, plotTool, stepCountIs, UIMessage, convertToModelMessages } from "@avenire/ai"
 import { auth } from "@avenire/auth/server";
 import { deleteChatById, getChatById, getChatsByUserId, getMessagesByChatId, saveChat, saveMessages } from "@avenire/database/queries"
 import { generateTitleFromUserMessage } from "../../../../actions/actions"
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { type CanvasData } from "../../../../lib/canvas_types";
+import { log } from "@avenire/logger/server";
 
 function formatCanvasData(data: CanvasData,
 ): string {
@@ -64,16 +65,12 @@ export async function POST(req: Request) {
       chatId,
       selectedModel,
       selectedReasoningModel,
-      thinkingEnabled,
-      deepResearchEnabled,
       canvasData,
     }: {
       messages: UIMessage[];
       chatId: string;
       selectedModel: "fermion-sprint" | "fermion-core" | "fermion-apex";
       selectedReasoningModel: "fermion-reasoning" | "fermion-reasoning-lite";
-      thinkingEnabled: false;
-      deepResearchEnabled: false;
       canvasData?: CanvasData[];
     } = await req.json()
     const session = await auth.api.getSession({
@@ -123,31 +120,28 @@ export async function POST(req: Request) {
       model = fermion.languageModel("fermion-apex")
       reasoningModel = fermion.languageModel("fermion-reasoning")
     }
-    const activeTools: Array<"graphTool" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = deepResearchEnabled ? ["plotTool"] : ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
+    const activeTools: Array<"graphTool" | "flashcardGeneratorTool" | "quizGeneratorTool" | "plotTool"> = ["graphTool", "flashcardGeneratorTool", "quizGeneratorTool", "plotTool"]
 
-
-    const instructions = deepResearchEnabled
-      ? DEEP_RESEARCH_PROMPT(session.user.name)
-      : FERMION_PROMPT(
-        session.user.name,
-        Array.isArray(canvasData)
-          ? canvasData.map(formatCanvasData).join('\n')
-          : canvasData
-            ? formatCanvasData(canvasData)
-            : ""
-      );
+    const instructions = FERMION_PROMPT(
+      session.user.name,
+      Array.isArray(canvasData)
+        ? canvasData.map(formatCanvasData).join('\n')
+        : canvasData
+          ? formatCanvasData(canvasData)
+          : ""
+    );
 
 
     const stream = createUIMessageStream({
       execute: ({ writer }) => {
         const result = streamText({
-          model: thinkingEnabled ? reasoningModel : model,
+          model: model,
           system: instructions,
           messages: convertToModelMessages(messages),
           providerOptions: {
             google: {
               thinkingConfig: {
-                reasoningBudget: thinkingEnabled ? 1024 : 600,
+                reasoningBudget: 1024,
                 includeThoughts: true
               },
             }
@@ -162,14 +156,10 @@ export async function POST(req: Request) {
               session.user.id,
               chatId
             ),
-            deepResearch: deepResearch(
-              writer,
-              reasoningModel
-            ),
             plotTool,
           },
           stopWhen: stepCountIs(5),
-          experimental_activeTools: selectedModel === 'fermion-sprint' || thinkingEnabled ? [] : activeTools,
+          experimental_activeTools: selectedModel === 'fermion-sprint' ? [] : activeTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
 
         })
@@ -196,14 +186,15 @@ export async function POST(req: Request) {
         });
       },
       onError: (error) => {
-        console.error(error)
+        log.error('Error in UIMessageStream', { error });
         return 'Oops, an error occured!';
       },
     })
 
     return createUIMessageStreamResponse({ stream })
   } catch (error) {
-    return NextResponse.json({ error }, { status: 400 });
+    log.error('Error in chat POST handler', { error });
+    return NextResponse.json({ error: 'An internal server error occurred' }, { status: 500 });
   }
 }
 
@@ -237,8 +228,8 @@ export async function DELETE(req: Request) {
 
     return new Response('Chat deleted', { status: 200 });
   } catch (error) {
-    return new Response('An error occurred while processing your request', {
-      status: 500,
-    });
+    log.error('Error in chat DELETE handler', { error, chatId: id });
+    return new Response('An error occurred while processing your request',
+      { status: 500 });
   }
 }

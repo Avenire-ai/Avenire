@@ -73,8 +73,6 @@ function PureMultimodalInput({
   setAttachments,
   messages,
   reload,
-  selectedMode,
-  setSelectedMode,
   handleSubmit,
   className,
   setMessages,
@@ -84,8 +82,6 @@ function PureMultimodalInput({
   setInput: (input: string) => void;
   status: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['status'];
   stop: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['stop'];
-  selectedMode: string;
-  setSelectedMode: (mode: string) => void;
   attachments: Array<Attachment>;
   setAttachments: Dispatch<SetStateAction<Array<Attachment>>>;
   messages: UseChatHelpers<UIMessage<unknown, UIDataTypes, ToolType>>['messages'];
@@ -130,7 +126,6 @@ function PureMultimodalInput({
       adjustHeight();
     }
     // Only run once after hydration
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -448,33 +443,6 @@ function PureMultimodalInput({
               setMessages={setMessages}
             />
           </div>
-        </div>
-        <div className="flex flex-row gap-2 p-2">
-          <ToggleGroup
-            type="single"
-            value={selectedMode}
-            onValueChange={(value) => setSelectedMode(value || "")}
-            size="sm"
-            variant="outline"
-            className="border rounded-lg p-1"
-          >
-            <ToggleGroupItem
-              value="thinking"
-              aria-label="Toggle thinking mode"
-              className="text-xs px-3 py-1.5 h-auto"
-            >
-              <Brain className="h-3 w-3 mr-1.5" />
-              Thinking
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="research"
-              aria-label="Toggle deep research mode"
-              className="text-xs px-3 py-1.5 h-auto"
-            >
-              <Search className="h-3 w-3 mr-1.5" />
-              Deep Research
-            </ToggleGroupItem>
-          </ToggleGroup>
         </div>
       </div>
     </div>

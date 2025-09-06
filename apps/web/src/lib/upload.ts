@@ -40,8 +40,6 @@ export const router = {
       return { userId: data?.user.id };
     })
     .onUploadComplete(({ metadata, file }) => {
-      console.info("Upload complete for userId:", metadata.userId);
-      console.info("file url", file.ufsUrl);
       // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
       return { uploadedBy: metadata.userId };
     })

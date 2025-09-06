@@ -271,7 +271,7 @@ const components: Options['components'] = {
     }
 
     // Check for Matplotlib code
-    if (language === 'python' && (children.props as { children: string }).children.includes('matplotlib')) {
+    if (language === 'matplotlib') {
       return <MatplotlibRenderer code={(children.props as { children: string }).children} />;
     }
 
@@ -282,8 +282,8 @@ const components: Options['components'] = {
         language={language}
       >
         <CodeBlockCopyButton
-          onCopy={() => console.log('Copied code to clipboard')}
-          onError={() => console.error('Failed to copy code to clipboard')}
+          onCopy={() => { }}
+          onError={() => { }}
         />
       </CodeBlock>
     );

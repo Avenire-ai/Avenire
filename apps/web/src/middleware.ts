@@ -1,6 +1,7 @@
 import { betterFetch } from "@better-fetch/fetch";
 import type { auth } from "@avenire/auth/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, NextFetchEvent } from "next/server";
+import { log } from "@avenire/logger/server";
 
 type Session = typeof auth.$Infer.Session;
 
@@ -24,11 +25,12 @@ const createRedirectResponse = (
   request: NextRequest
 ): NextResponse => NextResponse.redirect(new URL(url, request.url));
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   if (request.nextUrl.pathname.startsWith("/api/uploadthing")) {
     return;
   }
   try {
+
     const { data: session } = await betterFetch<Session>(
       "http://localhost:3000/api/auth/get-session",
       {
@@ -54,7 +56,7 @@ export async function middleware(request: NextRequest) {
 
     return NextResponse.next();
   } catch (error) {
-    console.error("Authentication middleware error:", error);
+    log.error("Authentication middleware error:", { error, url: request.url });
     return createRedirectResponse(ROUTES.redirects.unauthenticated, request);
   }
 }

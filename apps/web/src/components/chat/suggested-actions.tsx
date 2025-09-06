@@ -39,7 +39,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   return (
     <div
       data-testid="suggested-actions"
-      className="grid sm:grid-cols-2 gap-2 max-w-3xl mx-auto w-full mb-2"
+      className="flex flex-wrap justify-center gap-2 w-full max-w-3xl mx-auto mb-2"
     >
       {suggestedActions.map((suggestedAction, index) => (
         <motion.div
@@ -48,7 +48,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
           exit={{ opacity: 0, y: 20 }}
           transition={{ delay: 0.05 * index }}
           key={`suggested-action-${suggestedAction.title}-${index}`}
-          className={index > 1 ? 'hidden sm:block' : 'block'}
+          className="w-full sm:w-[calc(50%-0.5rem)]"
         >
           <Button
             variant="ghost"
@@ -64,7 +64,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
             className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
           >
             <span className="font-medium">{suggestedAction.title}</span>
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground truncate">
               {suggestedAction.label}
             </span>
           </Button>

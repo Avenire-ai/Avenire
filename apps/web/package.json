@@ -14,6 +14,7 @@
   "dependencies": {
     "@ai-sdk/react": "^2.0.22",
     "@avenire/auth": "*",
+    "@avenire/logger": "*",
     "@avenire/ui": "*",
     "@excalidraw/excalidraw": "^0.18.0",
     "@tailwindcss/postcss": "^4.0.9",

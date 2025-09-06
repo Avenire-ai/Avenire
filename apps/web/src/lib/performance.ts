@@ -27,7 +27,7 @@ export function createIntersectionObserver(
 }
 
 // Debounce function for performance
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -39,7 +39,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function for performance
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -96,7 +96,7 @@ export const performanceMonitor = {
       try {
         performance.measure(name, startMark, endMark);
       } catch (e) {
-        console.warn('Performance measure failed:', e);
+        // Performance measure failed silently
       }
     }
   },

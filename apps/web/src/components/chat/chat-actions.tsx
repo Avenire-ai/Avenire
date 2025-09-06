@@ -1,7 +1,7 @@
 import type { UIMessage } from 'ai';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { UseChatHelpers } from "@ai-sdk/react"
-
+import { log, captureException } from "@avenire/logger/client"
 import { CopyIcon, RotateCcw } from 'lucide-react';
 import { Button } from '@avenire/ui/components/button';
 import {
@@ -56,7 +56,8 @@ export function PureMessageActions({
       try {
         await onDeleteTrailing();
       } catch (error) {
-        console.error('Failed to delete trailing messages:', error);
+        log.error('Failed to delete trailing messages:', { error });
+        captureException(error);
       }
     }
   };

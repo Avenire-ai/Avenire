@@ -6,6 +6,7 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns"
 import { cn } from "@avenire/ui/lib/utils"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { log, captureException } from "@avenire/logger/client"
 
 function formatDate(date: Date) {
   const inputDate = new Date(date)
@@ -53,7 +54,8 @@ export function ChatHistoryItem({ chat }: ChatHistoryItemProps) {
         router.refresh();
       }
     } catch (error) {
-      console.error('Failed to delete chat:', error);
+      log.error('Failed to delete chat:', { error });
+      captureException(error);
     }
   };
 

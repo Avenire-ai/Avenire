@@ -70,7 +70,7 @@ export function usePerformanceMonitor() {
       const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach((entry) => {
           if (entry.duration > 50) {
-            console.warn('Long task detected:', entry);
+            // Long task detected - could be logged to analytics
           }
         });
       });

@@ -7,6 +7,7 @@ import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Download, Move, Loader2, Refresh
 import { Card, CardContent, CardHeader, CardTitle } from "@avenire/ui/components/card"
 
 import { useTheme } from 'next-themes';
+import { log, captureException } from "@avenire/logger/client";
 
 // Function to fix Mermaid node labels that don't have double quotes
 function fixMermaidQuotes(code: string): string {
@@ -237,8 +238,8 @@ export function MermaidDiagram({
         }
       }
     } catch (err) {
-      console.error("Mermaid rendering error:", err)
-      setError("Invalid chart syntax. Please check your Mermaid code.")
+      log.error('Mermaid rendering error:', { error: err, chartCode: chart });
+      captureException(error);
 
       // Clear the chart container to prevent showing ugly default errors
       if (chartRef.current) {
@@ -446,13 +447,11 @@ export function MermaidDiagram({
         }
 
         img.onerror = () => {
-          console.error("Failed to load SVG for download")
           setIsDownloading(false)
         }
 
         img.src = svgUrl
       } catch (err) {
-        console.error("Download failed:", err)
         setIsDownloading(false)
       }
     }

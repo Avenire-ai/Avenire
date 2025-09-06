@@ -29,10 +29,9 @@ import Image from "next/image"
 import { useCanvasStore } from "../stores/canvasStore"
 import { Button } from "@avenire/ui/components/button";
 import { AnimatePresence, motion } from "motion/react"
-import { Card, CardContent } from "@avenire/ui/components/card";
-import { PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@avenire/ui/components/tooltip";
+import { useClientLogger } from "@avenire/logger/client";
 
 interface ChatSidebarItemProps {
   id: string
@@ -125,11 +124,12 @@ const menuItems = [
 
 export function Sidebar() {
   const [activeItem, setActiveItem] = useState("Home")
-  const { open, isMobile } = useSidebar()
+  const { open, isMobile, setOpenMobile } = useSidebar()
   const { user } = useUserStore();
   const pathname = usePathname();
   const isChatPage = pathname?.startsWith('/chat');
   const { openCanvas } = useCanvasStore();
+  const log = useClientLogger();
 
   const { data: recentChatsData, mutate } = useSWR(
     user?.id ? '/api/history' : null,
@@ -166,7 +166,7 @@ export function Sidebar() {
         }
       }
     } catch (error) {
-      console.error('Failed to delete chat:', error);
+      log.error('Failed to delete chat:', { error });
     }
   };
 
@@ -174,7 +174,7 @@ export function Sidebar() {
 
   return (
     <>
-      <div className={!isMobile ? "absolute left-3 top-3 z-50 p-2 rounded-lg bg-sidebar transition-all flex flex-row gap-2" : "visibility-hidden"}>
+      <div className="absolute left-3 top-3 z-50 p-2 rounded-lg bg-sidebar transition-all flex flex-col md:flex-row gap-2">
         <SidebarTrigger />
         <AnimatePresence>
           {!open && (
@@ -188,7 +188,12 @@ export function Sidebar() {
                 size={"icon"}
                 variant={"ghost"}
                 className={"h-7 w-7"}
-                onClick={() => { openCanvas('flashcards') }}
+                onClick={() => {
+                  openCanvas('flashcards');
+                  if (isMobile) {
+                    setOpenMobile(false);
+                  }
+                }}
               >
                 <Pyramid />
                 <span className="sr-only">Toggle Canvas</span>
@@ -241,7 +246,12 @@ export function Sidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       className="cursor-pointer"
-                      onClick={() => openCanvas('flashcards')}
+                      onClick={() => {
+                        openCanvas('flashcards');
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
+                      }}
                       tooltip={!open ? "Open Canvas" : undefined}
                     >
                       <Pyramid className="h-4 w-4" />
@@ -349,4 +359,3 @@ export function SidebarSkeleton() {
     </div>
   )
 }
-

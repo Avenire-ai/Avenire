@@ -7,10 +7,7 @@ import { Markdown } from '../markdown';
 import { PreviewAttachment } from './preview-attachment';
 import equal from 'fast-deep-equal';
 import { cn } from '@avenire/ui/utils';
-import { MessageReasoning } from './message-reasoning';
 import { useChat, UseChatHelpers } from '@ai-sdk/react';
-import ResearchProcess from './deepresearch-process';
-import ResearchDisplay from './deepresearch-display';
 import { useGraphStore, clearGraphOnNewMessage } from '../../stores/graphStore';
 import { MessageActions } from './chat-actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@avenire/ui/src/components/card';
@@ -69,14 +66,7 @@ const PurePreviewMessage = ({
   openCanvas: (mode?: Mode) => void
   isReadonly: boolean;
 }) => {
-  const { messages } = useChat({
-    id: chatId,
-    onData: (dataStream) => {
-      setResearchData(dataStream as any)
-    }
-  });
-  const [researchData, setResearchData] = useState<Array<any>>([])
-  const { addExpression, clearGraph } = useGraphStore()
+  const { addExpression } = useGraphStore()
 
   const handleRegenerate = async () => {
     await regenerateMessage({
@@ -145,9 +135,6 @@ const PurePreviewMessage = ({
               </div>
             )}
 
-            {message.role === "assistant" && researchData.length > 0 && (
-              <ResearchProcess data={researchData} />
-            )}
 
             {message.parts?.map((part, index) => {
               const { type } = part;
@@ -299,13 +286,6 @@ const PurePreviewMessage = ({
                         </Button>
                       </div>
                     )
-                  }
-                  break;
-                }
-                case 'tool-deepResearch': {
-                  const { input, output, state } = part
-                  if (state === "output-available" && researchData.length <= 0) {
-                    return <ResearchDisplay data={output} />;
                   }
                   break;
                 }

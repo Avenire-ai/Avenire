@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@avenire/ui/co
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@avenire/ui/components/tooltip"
 import { LoaderIcon, File, X } from "lucide-react"
 import { motion } from "motion/react"
+import { log, captureException } from "@avenire/logger/client"
 
 export type Attachment = {
   id: string
@@ -52,7 +53,8 @@ export const PreviewAttachment = ({
         const text = await response.text()
         setTextPreview(text)
       } catch (error) {
-        console.error("Failed to load text preview:", error)
+        log.error("Failed to load text preview:", { error })
+        captureException(error)
       }
     }
   }

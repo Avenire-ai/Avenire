@@ -29,5 +29,8 @@
     "clean": "git clean -xdf node_modules"
   },
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"]
+  "workspaces": ["apps/*", "packages/*"],
+  "dependencies": {
+    "winston": "^3.17.0"
+  }
 }

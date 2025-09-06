@@ -7,12 +7,13 @@ import { Sidebar } from "../../components/sidebar";
 import { useUserStore } from "../../stores/userStore";
 import { unauthorized } from "next/navigation"
 import { preWarmWorkerPool } from "../../lib/worker-pool-manager";
+import { log, captureException } from "@avenire/logger/client";
 
 // Client component to handle worker pre-warming
 function WorkerPreWarmer() {
   React.useEffect(() => {
     // Pre-warm the Pyodide worker pool
-    preWarmWorkerPool().catch(console.error);
+    preWarmWorkerPool().catch();
   }, []);
   return null;
 }
@@ -25,7 +26,10 @@ export default function RootLayout({
   const { user, fetchUser } = useUserStore();
   React.useEffect(() => {
     // Pre-warm the Pyodide worker pool
-    preWarmWorkerPool().catch(console.error);
+    preWarmWorkerPool().catch((error) => {
+      log.error("Failed to pre-warm worker pool", { error });
+      captureException(error);
+    });
   }, []);
   useEffect(() => {
     const check = async () => {
@@ -41,7 +45,7 @@ export default function RootLayout({
     <SidebarProvider>
       <div className="flex min-h-screen w-full overflow-hidden">
         <Sidebar />
-        <div className="flex-1 w-full px-4 h-screen overflow-y-scroll">
+        <div className="flex-1 w-full px-4 h-screen overflow-y-scroll pt-12 md:pt-0">
           <WorkerPreWarmer />
           {children}
         </div>

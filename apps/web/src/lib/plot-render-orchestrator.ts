@@ -54,8 +54,9 @@ export async function renderPlotOrchestrator({
     await setMatplotlibCache(hash, uploadedUrl);
 
     return { url: uploadedUrl };
-  } catch (err: any) {
+  } catch (err: unknown) {
     pool.releaseWorker(worker);
-    return { error: err.message || 'Failed to render plot' };
+    const errorMessage = err instanceof Error ? err.message : 'Failed to render plot';
+    return { error: errorMessage };
   }
 } 

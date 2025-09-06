@@ -73,7 +73,6 @@ export function Chat({
   isReadonly
 }: ChatProps) {
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-  const [selectedMode, setSelectedMode] = useState<string>("");
   const [canvasKey, setCanvasKey] = useState(0);
   const pathname = usePathname();
   const [input, setInput] = useState('')
@@ -86,20 +85,14 @@ export function Chat({
   const { isOpen: isCanvasOpen, mode: canvasMode, openCanvas, closeCanvas, setChatId, currentQuestion, currentFlashcard } = useCanvasStore();
   const graphExpressions = useGraphStore((state) => state.expressions);
 
-  // Close canvas on page change or refresh
+  // Close canvas on component unmount
   useEffect(() => {
-    closeCanvas();
-  }, [pathname, closeCanvas]);
+    return () => {
+      closeCanvas();
+    };
+  }, [closeCanvas]);
 
   const handleError = useCallback((error: Error) => {
-    // Log the full error for developers
-    console.error('Chat error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    console.error(error)
-
     // Categorize the error
     const errorType = categorizeError(error);
     const userMessage = ERROR_MESSAGES[errorType];
@@ -170,8 +163,6 @@ export function Chat({
         chatId: id,
         selectedModel,
         selectedReasoningModel,
-        thinkingEnabled: selectedMode === "thinking",
-        deepResearchEnabled: selectedMode === "research",
         ...(canvasData ? { canvasData } : {})
       },
     }),
@@ -243,14 +234,12 @@ export function Chat({
             </Button>
           </motion.div>
           {!isReadonly && (
-            <div className={"p-2 pb-0 bg-border/50 border-foreground/70 backdrop-blur-sm rounded-2xl rounded-b-none gap-2 w-full"}>
+            <div className={"p-2 min-h-32 pb-0 bg-border/50 border-foreground/70 backdrop-blur-sm rounded-2xl rounded-b-none gap-2 w-full"}>
               <MultimodalInput
                 chatId={id}
                 input={input}
                 setInput={setInput}
                 reload={reload}
-                selectedMode={selectedMode}
-                setSelectedMode={setSelectedMode}
                 handleSubmit={handleSubmit}
                 status={status}
                 stop={stop}

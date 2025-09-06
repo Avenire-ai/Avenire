@@ -49,7 +49,6 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
   },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
-      console.info(ctx.path)
       if (ctx.path.startsWith("https://avenire.ai/api/auth/sign-up")) {
         const newSession = ctx.context.newSession;
         if (newSession) {
@@ -113,26 +112,32 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     },
   },
   socialProviders: {
-    google: {
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      mapProfileToUser: (profile) => {
-        return {
-          name: profile.given_name,
-          username: profile.name,
-        };
-      },
-    },
-    github: {
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
-      mapProfileToUser: (profile) => {
-        return {
-          name: profile.name,
-          username: profile.name,
-        };
-      },
-    },
+    ...(process.env.AUTH_GOOGLE_ID &&
+      process.env.AUTH_GOOGLE_SECRET && {
+        google: {
+          clientId: process.env.AUTH_GOOGLE_ID,
+          clientSecret: process.env.AUTH_GOOGLE_SECRET,
+          mapProfileToUser: (profile: any) => {
+            return {
+              name: profile.given_name,
+              username: profile.name,
+            };
+          },
+        },
+      }),
+    ...(process.env.AUTH_GITHUB_ID &&
+      process.env.AUTH_GITHUB_SECRET && {
+        github: {
+          clientId: process.env.AUTH_GITHUB_ID,
+          clientSecret: process.env.AUTH_GITHUB_SECRET,
+          mapProfileToUser: (profile: any) => {
+            return {
+              name: profile.name,
+              username: profile.name,
+            };
+          },
+        },
+      }),
   },
   database: drizzleAdapter(database, {
     provider: "pg",

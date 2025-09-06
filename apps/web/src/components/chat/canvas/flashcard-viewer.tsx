@@ -99,7 +99,7 @@ export function FlashcardViewer({ chatId }: FlashcardViewerProps) {
     }
   }
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (event: unknown, info: { offset: { x: number; y: number } }) => {
     const threshold = 100
     if (info.offset.x > threshold && safeCurrentIndex > 0) {
       prevCard()

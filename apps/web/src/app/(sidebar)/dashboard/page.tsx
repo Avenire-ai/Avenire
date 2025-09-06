@@ -151,7 +151,7 @@ export default function LibraryPage() {
                 >
                   <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     {courses.map((course) => (
-                      <CourseCard key={course.id} course={course} onQuit={(id) => console.log("Quit course:", id)} />
+                      <CourseCard key={course.id} course={course} onQuit={(id) => { }} />
                     ))}
                   </div>
                 </Suspense>

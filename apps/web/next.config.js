@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable compression
@@ -8,12 +9,14 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60,
   },
+  transpilePackages: ['@avenire/auth', '@avenire/ui', '@avenire/logger'],
 
   // Enable experimental features for better performance
   experimental: {
     optimizePackageImports: [
       'lucide-react',
       '@avenire/ui',
+      '@avenire/logger',
       'react-markdown',
       'react-syntax-highlighter',
     ]
@@ -45,10 +48,10 @@ const nextConfig = {
   },
 
   // Headers for caching and compression
-  async headers() {
+  headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         headers: [
           {
             key: 'X-Content-Type-Options',
@@ -62,14 +65,54 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
         ],
       },
       {
-        source: '/_next/static/(.*)',
+        source: '/_next/static/:path*',
         headers: [
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/manifest.json',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400',
+          },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=60, s-maxage=60',
+          },
+        ],
+      },
+      {
+        source: '/:path*.(png|jpg|jpeg|gif|webp|svg|ico)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400',
           },
         ],
       },
@@ -92,3 +135,4 @@ const config = process.env.ANALYZE === 'true'
   : nextConfig;
 
 export default config;
+

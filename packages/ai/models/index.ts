@@ -18,7 +18,12 @@ export const fermion = customProvider({
     "fermion-sprint": google("gemini-2.0-flash"),
     "fermion-core": google("gemini-2.5-flash"),
     "fermion-apex": google("gemini-2.5-pro"),
-    "fermion-thinking": google("gemini-2.5-pro"),
+    "fermion-reasoning": openrouter.languageModel("deepseek/deepseek-r1:free", {
+      reasoning: {
+        exclude: false,
+        effort: "medium",
+      },
+    }),
     "fermion-reasoning-lite": openrouter.languageModel("deepseek/deepseek-r1:free", {
       reasoning: {
         exclude: false,

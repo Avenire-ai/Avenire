@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 import type { Metadata } from "next";
 import "@avenire/ui/globals.css";
 import { ThemeProvider } from "@avenire/ui/providers/theme";
@@ -8,10 +8,39 @@ import { extractRouterConfig } from "@avenire/storage";
 import { router } from "../lib/upload";
 import Script from "next/script"
 import { TooltipProvider } from "@avenire/ui/components/tooltip";
+import { ServiceWorkerRegistration, OfflineIndicator } from "../components/ServiceWorkerRegistration";
+import type { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  themeColor: "#3b82f6",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "Avenire",
-  description: "Avenire",
+  description: "Illuminate Your Learning & Research Journey with AI",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Avenire",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Avenire",
+    title: "Avenire - AI Learning Platform",
+    description: "Illuminate Your Learning & Research Journey with AI",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Avenire - AI Learning Platform",
+    description: "Illuminate Your Learning & Research Journey with AI",
+  },
 };
 
 export default function RootLayout({
@@ -39,6 +68,8 @@ export default function RootLayout({
             {children}
           </TooltipProvider>
           <Toaster />
+          <ServiceWorkerRegistration />
+          <OfflineIndicator />
         </ThemeProvider>
       </body>
     </html>

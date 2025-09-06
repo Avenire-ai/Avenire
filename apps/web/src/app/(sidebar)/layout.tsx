@@ -27,7 +27,7 @@ export default function RootLayout({
     <SidebarProvider>
       <div className="flex min-h-screen w-full overflow-hidden">
         <Sidebar />
-        <div className="flex-1 w-full h-screen overflow-y-scroll">
+        <div className="pt-12 flex-1 w-full h-screen overflow-y-scroll md:pt-0">
           {children}
         </div>
       </div>
