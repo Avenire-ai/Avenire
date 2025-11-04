@@ -44,6 +44,6 @@ avenire.ai.pem
 Caddyfile
 
 # Ignore AI prompt files
-packages/ai/prompts/*
+# packages/ai/prompts/*
 
 drizzle
