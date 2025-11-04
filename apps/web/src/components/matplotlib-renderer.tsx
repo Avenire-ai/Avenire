@@ -25,7 +25,11 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 export const MatplotlibRenderer: React.FC<{ code: string }> = ({ code }) => {
   const [open, setOpen] = useState(false);
-  const { startUpload } = useUploadThing("chatAttachments");
+  const { startUpload } = useUploadThing("chatAttachments", {
+    onUploadError: (error) => {
+      console.error(error)
+    },
+  });
 
   const uploadFn = useCallback(async (file: File) => {
     const uploadResponse = await startUpload([file]);

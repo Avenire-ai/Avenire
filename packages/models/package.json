@@ -1,0 +1,28 @@
+{
+  "name": "@avenire/models",
+  "module": "index.ts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fsrs": "./src/fsrs.ts",
+    "./sm2": "./src/sm2.ts",
+    "./leitner": "./src/leitner.ts",
+    "./elo": "./src/elo.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "gen-env-types": "^1.3.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@avenire/typescript-config": "*",
+    "supermemo": "^2.0.4",
+    "ts-fsrs": "^5.2.3"
+  }
+}

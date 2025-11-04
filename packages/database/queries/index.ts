@@ -148,9 +148,12 @@ export async function saveChat({
 
 export async function deleteChatById({ id }: { id: string }) {
   try {
-    await database.delete(message).where(eq(message.chatId, id));
-
-    return await database.delete(chat).where(eq(chat.id, id));
+    return await database.transaction(async (tx) => {
+      await tx.update(flashcards).set({ chatId: null }).where(eq(flashcards.chatId, id));
+      await tx.update(quizzes).set({ chatId: null }).where(eq(quizzes.chatId, id));
+      await tx.delete(message).where(eq(message.chatId, id));
+      return await tx.delete(chat).where(eq(chat.id, id));
+    });
   } catch (error) {
     log.error('Failed to delete chat by id from database')
     captureException(error, log)
@@ -279,3 +282,6 @@ export async function deleteMessagesByChatIdAfterTimestamp({
     throw error;
   }
 }
+
+// Re-export progress queries
+export * from "./progress-queries"

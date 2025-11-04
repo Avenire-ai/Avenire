@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Sparkles, CheckCircle, XCircle, RotateCcw, Trophy, ChevronLeft, ChevronRight, Lightbulb, Target, AlertTriangle, BookOpen, Brain, PartyPopper } from "lucide-react"
+import { Sparkles, CheckCircle, XCircle, RotateCcw, Trophy, ChevronLeft, ChevronRight, Lightbulb, Target, AlertTriangle, BookOpen, Brain, PartyPopper, Copy } from "lucide-react"
 import { Button } from "@avenire/ui/components/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@avenire/ui/components/select"
 import { Badge } from "@avenire/ui/components/badge"
 import { Card, CardContent } from "@avenire/ui/components/card"
-import { getQuizzesForChat } from "../../../actions/actions"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@avenire/ui/components/sheet"
+import { getQuizzesForChat, convertQuizToFlashcard } from "../../../actions/actions"
 import { Markdown } from "../../markdown"
 import { type Quiz } from "../../../lib/canvas_types"
 import { useCanvasStore } from "../../../stores/canvasStore"
@@ -81,6 +82,7 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [showExplanation, setShowExplanation] = useState(false)
   const [showHint, setShowHint] = useState(false)
+  const [showQuestionInfo, setShowQuestionInfo] = useState(false)
   const [score, setScore] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const [answered, setAnswered] = useState(false)
@@ -90,6 +92,7 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [showConfetti, setShowConfetti] = useState(false)
   const [answerResult, setAnswerResult] = useState<"correct" | "incorrect" | null>(null)
+  const [isConverting, setIsConverting] = useState(false)
   const { setCurrentQuestion: setCurrentQuestionStore } = useCanvasStore()
 
   useEffect(() => {
@@ -217,14 +220,32 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
     return "Keep studying! 💪"
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "beginner": return "bg-primary/10 text-primary border-primary/20"
-      case "intermediate": return "bg-orange-500/10 text-orange-600 border-orange-500/20"
-      case "advanced": return "bg-destructive/10 text-destructive border-destructive/20"
-      default: return "bg-muted text-muted-foreground border-border"
+  // Removed getDifficultyColor - using minimal badges only
+
+  const handleConvertToFlashcard = async () => {
+    if (!question) return;
+    
+    setIsConverting(true);
+    try {
+      // Extract quiz ID from question ID (format: quizId-questionId)
+      const quizId = question.id.split('-').slice(0, -1).join('-');
+      const questionIndex = parseInt(question.id.split('-').pop() || '0');
+      
+      const result = await convertQuizToFlashcard({ 
+        quizId, 
+        questionIndex 
+      });
+      
+      if (result.success) {
+        // Could show a toast notification here
+        console.log('Flashcard created successfully');
+      }
+    } catch (error) {
+      console.error('Failed to convert to flashcard', error);
+    } finally {
+      setIsConverting(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -322,9 +343,21 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
               </span>
             </div>
           </div>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleConvertToFlashcard}
+              disabled={isConverting}
+              className="flex items-center gap-2"
+            >
+              <Copy className="h-4 w-4" />
+              {isConverting ? "Converting..." : "Convert to Flashcard"}
+            </Button>
+          </div>
         </div>
 
-        {/* Answer Result Banner */}
+        {/* Answer Result Banner - Minimal Design */}
         <AnimatePresence>
           {answerResult && (
             <motion.div
@@ -332,38 +365,23 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className={`p-4 rounded-lg border-2 ${answerResult === "correct"
-                ? "bg-green-500/10 border-green-500/20 text-green-700"
-                : "bg-destructive/10 border-destructive/20 text-destructive"
-                }`}
+              className="p-4 rounded-lg border bg-muted"
             >
               <div className="flex items-center gap-3">
                 {answerResult === "correct" ? (
                   <>
-                    <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ duration: 0.5, type: "spring" }}
-                    >
-                      <CheckCircle className="h-6 w-6 text-green-600" />
-                    </motion.div>
+                    <CheckCircle className="h-5 w-5 text-foreground" />
                     <div>
-                      <h4 className="font-semibold text-green-700">Correct! 🎉</h4>
-                      <p className="text-sm text-green-600">Great job! You got this question right.</p>
+                      <h4 className="font-semibold text-foreground">Correct</h4>
+                      <p className="text-sm text-muted-foreground">Great job!</p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <motion.div
-                      initial={{ scale: 0, rotate: 180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ duration: 0.5, type: "spring" }}
-                    >
-                      <XCircle className="h-6 w-6 text-destructive" />
-                    </motion.div>
+                    <XCircle className="h-5 w-5 text-foreground" />
                     <div>
-                      <h4 className="font-semibold text-destructive">Incorrect</h4>
-                      <p className="text-sm text-destructive/80">Don't worry! Check the explanation below to learn from this.</p>
+                      <h4 className="font-semibold text-foreground">Incorrect</h4>
+                      <p className="text-sm text-muted-foreground">Check the explanation below.</p>
                     </div>
                   </>
                 )}
@@ -384,42 +402,55 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
               className="space-y-6"
             >
               {/* Question Header */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary"><Sparkles className="w-6 h-6" /></span>
-                  </div>
+                  <Sparkles className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Problem {question.id}</span>
                 </div>
-                <Badge variant="secondary">{question.type}</Badge>
-                <Badge className={getDifficultyColor(question.difficulty)}>
-                  {question.difficulty}
-                </Badge>
-              </div>
-
-              {/* Learning Objectives Preview */}
-              {question.learningObjectives.length > 0 && (
-                <Card className="bg-blue-500/10 border-blue-500/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="h-4 w-4 text-blue-600" />
-                      <h5 className="font-medium text-blue-700">Learning Objectives</h5>
-                    </div>
-                    <div className="text-sm text-blue-600">
-                      <ul className="list-disc list-inside space-y-1">
-                        {question.learningObjectives.slice(0, 2).map((objective, index) => (
-                          <li key={index}>
-                            <Markdown content={objective} id={`quiz-objective-preview-${question.id}-${index}`} />
-                          </li>
-                        ))}
-                        {question.learningObjectives.length > 2 && (
-                          <li className="text-blue-500 italic">+{question.learningObjectives.length - 2} more objectives</li>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{question.type}</Badge>
+                  <Badge variant="secondary">{question.difficulty}</Badge>
+                  <Sheet open={showQuestionInfo} onOpenChange={setShowQuestionInfo}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <BookOpen className="h-4 w-4" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:max-w-md">
+                      <SheetHeader>
+                        <SheetTitle>Question Information</SheetTitle>
+                        <SheetDescription>
+                          Additional details about this question
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="mt-6 space-y-6">
+                        {question.learningObjectives.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Target className="h-4 w-4 text-muted-foreground" />
+                              <h5 className="font-medium">Learning Objectives</h5>
+                            </div>
+                            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+                              {question.learningObjectives.map((objective, index) => (
+                                <li key={index}>
+                                  <Markdown content={objective} id={`quiz-objective-sheet-${question.id}-${index}`} />
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                            <h5 className="font-medium">Difficulty</h5>
+                          </div>
+                          <Badge variant="secondary">{question.difficulty}</Badge>
+                        </div>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              </div>
 
               {/* Question Text */}
               <div className="space-y-6">
@@ -439,13 +470,13 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
                         key={index}
                         className={`flex items-center space-x-3 p-4 rounded-lg cursor-pointer transition-all ${showResult
                           ? isCorrect
-                            ? "bg-green-500/10 border-2 border-green-500/20 shadow-sm"
+                            ? "bg-muted border-2 border-border"
                             : isSelected
-                              ? "bg-destructive/10 border-2 border-destructive/20 shadow-sm"
+                              ? "bg-muted border-2 border-border"
                               : "bg-muted/50 border border-border"
                           : isSelected
-                            ? "bg-accent border-2 border-primary/20"
-                            : "hover:bg-accent/50 border border-transparent"
+                            ? "bg-accent border border-border"
+                            : "hover:bg-accent/50 border border-border"
                           }`}
                         whileHover={!answered ? { scale: 1.01 } : {}}
                         whileTap={!answered ? { scale: 0.98 } : {}}
@@ -469,9 +500,9 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
                             transition={{ duration: 0.3, type: "spring" }}
                           >
                             {isCorrect ? (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
+                              <CheckCircle className="h-5 w-5 text-foreground" />
                             ) : isSelected ? (
-                              <XCircle className="h-5 w-5 text-destructive" />
+                              <XCircle className="h-5 w-5 text-foreground" />
                             ) : null}
                           </motion.div>
                         )}
@@ -509,13 +540,13 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
                     className="overflow-hidden border-t pt-6 space-y-6"
                   >
                     {/* Step by Step Solution */}
-                    <Card className="bg-green-500/10 border-green-500/20">
+                    <Card className="bg-muted border-border">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <Brain className="h-4 w-4 text-green-600" />
-                          <h5 className="font-medium text-green-700">Step-by-Step Solution</h5>
+                          <Brain className="h-4 w-4 text-muted-foreground" />
+                          <h5 className="font-medium">Step-by-Step Solution</h5>
                         </div>
-                        <div className="text-sm text-green-600 leading-relaxed">
+                        <div className="text-sm text-muted-foreground leading-relaxed">
                           <Markdown content={question.stepByStepSolution} id={`quiz-solution-${question.id}`} />
                         </div>
                       </CardContent>
@@ -523,35 +554,16 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
 
                     {/* Common Mistakes */}
                     {question.commonMistakes.length > 0 && (
-                      <Card className="bg-orange-500/10 border-orange-500/20">
+                      <Card className="bg-muted border-border">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-3">
-                            <AlertTriangle className="h-4 w-4 text-orange-600" />
-                            <h5 className="font-medium text-orange-700">Common Mistakes to Avoid</h5>
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                            <h5 className="font-medium">Common Mistakes to Avoid</h5>
                           </div>
                           <ul className="list-disc list-inside space-y-2">
                             {question.commonMistakes.map((mistake, index) => (
-                              <li key={index} className="text-sm text-orange-600">
+                              <li key={index} className="text-sm text-muted-foreground">
                                 <Markdown content={mistake} id={`quiz-mistake-${question.id}-${index}`} />
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Learning Objectives */}
-                    {question.learningObjectives.length > 0 && (
-                      <Card className="bg-blue-500/10 border-blue-500/20">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Target className="h-4 w-4 text-blue-600" />
-                            <h5 className="font-medium text-blue-700">Learning Objectives</h5>
-                          </div>
-                          <ul className="list-disc list-inside space-y-2">
-                            {question.learningObjectives.map((objective, index) => (
-                              <li key={index} className="text-sm text-blue-600">
-                                <Markdown content={objective} id={`quiz-objective-${question.id}-${index}`} />
                               </li>
                             ))}
                           </ul>
@@ -561,15 +573,15 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
 
                     {/* Follow-up Questions */}
                     {question.followUpQuestions && question.followUpQuestions.length > 0 && (
-                      <Card className="bg-purple-500/10 border-purple-500/20">
+                      <Card className="bg-muted border-border">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2 mb-3">
-                            <BookOpen className="h-4 w-4 text-purple-600" />
-                            <h5 className="font-medium text-purple-700">Related Questions to Explore</h5>
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            <h5 className="font-medium">Related Questions to Explore</h5>
                           </div>
                           <ul className="list-disc list-inside space-y-2">
                             {question.followUpQuestions.map((followUp, index) => (
-                              <li key={index} className="text-sm text-purple-600">
+                              <li key={index} className="text-sm text-muted-foreground">
                                 <Markdown content={followUp} id={`quiz-followup-${question.id}-${index}`} />
                               </li>
                             ))}
@@ -597,43 +609,33 @@ export function QuizPrompter({ chatId }: QuizPrompterProps) {
           </AnimatePresence>
         </div>
 
-        {/* Hint button and card */}
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHint(!showHint)}
-            disabled={answered}
-            className="flex items-center gap-2"
-          >
-            <Lightbulb className="h-4 w-4" />
-            {showHint ? "Hide Hint" : "Show Hint"}
-          </Button>
-
-          <AnimatePresence>
-            {showHint && (
-              <motion.div
-                initial={{ height: 0, opacity: 0, y: -10 }}
-                animate={{ height: "auto", opacity: 1, y: 0 }}
-                exit={{ height: 0, opacity: 0, y: -10 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="overflow-hidden"
-              >
-                <Card className="bg-warning/50 border-warning/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Lightbulb className="h-4 w-4 text-warning-600" />
-                      <h5 className="font-medium text-warning-800">Hint</h5>
-                    </div>
-                    <div className="text-sm text-warning-700 leading-relaxed">
-                      <Markdown content={question.hint} id={`quiz-hint-${question.id}`} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Hint button with Sheet */}
+        <Sheet open={showHint} onOpenChange={setShowHint}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={answered}
+              className="flex items-center gap-2"
+            >
+              <Lightbulb className="h-4 w-4" />
+              Show Hint
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Hint</SheetTitle>
+              <SheetDescription>
+                A hint to help you with this question
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6">
+              <div className="text-sm text-muted-foreground leading-relaxed">
+                <Markdown content={question.hint} id={`quiz-hint-${question.id}`} />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Navigation buttons */}
         <div className="flex items-center justify-between gap-2 pt-4 border-t">

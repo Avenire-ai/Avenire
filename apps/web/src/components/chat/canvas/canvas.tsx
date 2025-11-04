@@ -102,19 +102,12 @@ export function Canvas({ open, onClose, children, onOpenChange, chatId, initialM
                   return (
                     <Button
                       key={mode.id}
-                      variant={isActive ? "default" : "ghost"}
+                      variant={isActive ? "secondary" : "ghost"}
                       size="sm"
                       onClick={() => setActiveMode(mode.id)}
                       className="relative"
                     >
                       <Icon className="h-4 w-4" />
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeMode"
-                          className="absolute inset-0 bg-primary rounded-md -z-10"
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        />
-                      )}
                     </Button>
                   )
                 })}

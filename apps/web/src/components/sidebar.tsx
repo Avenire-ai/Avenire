@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookOpen, Trash, Trash2, Settings, ChevronDown, LogOut, User2, Layout, Pyramid, MessageCircle } from "lucide-react"
+import { Home, BookOpen, Trash, Trash2, Settings, ChevronDown, LogOut, User2, Layout, Pyramid, MessageCircle, Library, GraduationCap } from "lucide-react"
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -77,6 +77,9 @@ export function ChatSidebarItem({
         <Link href={href} className="text-sm flex items-center w-full">
           <MessageCircle className="w-4 h-4 mr-3 flex-shrink-0" />
           <span className="truncate text-left flex-1">{title}</span>
+          {title.includes('...') && (
+            <div className="ml-2 h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+          )}
         </Link>
       </Button>
 
@@ -119,7 +122,15 @@ export function ChatSidebarItem({
 const menuItems = [
   { icon: Home, label: "Home", href: "/dashboard" },
   { icon: BookOpen, label: "New chat", href: "/chat" },
+  { icon: Library, label: "Library", href: "/library" },
+  { icon: GraduationCap, label: "Study", href: "/study" },
   { icon: Settings, label: "Settings", href: "/settings" },
+]
+
+// Additional menu items for library
+export const libraryMenuItems = [
+  { icon: Library, label: "All Items", href: "/library" },
+  { icon: BookOpen, label: "Create Flashcard", href: "/library/create-flashcard" },
 ]
 
 export function Sidebar() {

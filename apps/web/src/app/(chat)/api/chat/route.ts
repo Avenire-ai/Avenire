@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     const stream = createUIMessageStream({
       execute: ({ writer }) => {
         const result = streamText({
-          model: model,
+          model,
           system: instructions,
           messages: convertToModelMessages(messages),
           providerOptions: {

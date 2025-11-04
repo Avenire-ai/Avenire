@@ -2,6 +2,7 @@
 const CACHE_NAME = 'avenire-v1';
 const STATIC_CACHE_NAME = 'avenire-static-v1';
 const DYNAMIC_CACHE_NAME = 'avenire-dynamic-v1';
+const MATPLOTLIB_CACHE_NAME = 'matplotlib-cache-v1';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -48,7 +49,8 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== STATIC_CACHE_NAME && 
-                cacheName !== DYNAMIC_CACHE_NAME) {
+                cacheName !== DYNAMIC_CACHE_NAME &&
+                cacheName !== MATPLOTLIB_CACHE_NAME) {
               console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -74,6 +76,12 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http requests
   if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Pyodide/matplotlib assets from CDN
+  if (url.hostname === 'cdn.jsdelivr.net') {
+    event.respondWith(cacheFirst(request, MATPLOTLIB_CACHE_NAME));
     return;
   }
 

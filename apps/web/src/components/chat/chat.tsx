@@ -22,6 +22,7 @@ import { useCanvasStore } from '../../stores/canvasStore'
 import { usePathname } from 'next/navigation'
 import { useGraphStore } from '../../stores/graphStore';
 import { type CanvasData } from '../../lib/canvas_types';
+import { DynamicIsland } from './dynamic-island';
 
 // Error types for better error handling
 type ChatErrorType =
@@ -84,14 +85,7 @@ export function Chat({
 
   const { isOpen: isCanvasOpen, mode: canvasMode, openCanvas, closeCanvas, setChatId, currentQuestion, currentFlashcard } = useCanvasStore();
   const graphExpressions = useGraphStore((state) => state.expressions);
-
-  // Close canvas on component unmount
-  useEffect(() => {
-    return () => {
-      closeCanvas();
-    };
-  }, [closeCanvas]);
-
+  const [chatTitle, setChatTitle] = useState('Untitled Chat');
   const handleError = useCallback((error: Error) => {
     // Categorize the error
     const errorType = categorizeError(error);
@@ -125,28 +119,6 @@ export function Chat({
     return data;
   }, [currentQuestion, currentFlashcard, graphExpressions]);
 
-  const handleToolCall = useCallback((part: UIMessagePart<UIDataTypes, ToolType>) => {
-    if (part.type === 'tool-flashcardGeneratorTool' || part.type === "tool-quizGeneratorTool") {
-      setCanvasKey(prev => prev + 1);
-      if (!isCanvasOpen) {
-        setChatId(id)
-        openCanvas(part.type === 'tool-flashcardGeneratorTool' ? 'flashcards' : 'quiz');
-      }
-    }
-  }, [isCanvasOpen, id, openCanvas]);
-
-  const handleSubmit = (files: Attachment[], e?: SubmitEvent) => {
-    e?.preventDefault();
-    // Map Attachment[] to File[] and create a FileList
-    const fileArray = files.map(att => att.file);
-    // Create a FileList from the array (using DataTransfer)
-    const dataTransfer = new DataTransfer();
-    fileArray.forEach(file => dataTransfer.items.add(file));
-    const fileList = dataTransfer.files;
-    append({ text: input, files: fileList });
-    setInput('');
-  };
-
   const {
     messages,
     setMessages,
@@ -171,12 +143,28 @@ export function Chat({
     generateId: generateUUID,
 
     onFinish: async () => {
-      mutate('/api/history');
-      // Update page title when chat is finished
+      // Update page title and dynamic island title when chat is finished
       if (messages.length < 3) {
         const { title } = await getChatTitle({ chatId: id });
+        setChatTitle(title);
         document.title = `${title} | Avenire`;
+
+        // Update sidebar with real title
+        mutate('/api/history', (data: any) => {
+          if (data?.chats) {
+            return {
+              chats: data.chats.map((chat: any) =>
+                chat.id === id ? { ...chat, title } : chat
+              )
+            };
+          }
+          return data;
+        }, { revalidate: false });
+      } else {
+        // Just refresh the sidebar for existing chats
+        mutate('/api/history');
       }
+
       messages.at(-1)?.parts.forEach((part, i) => {
         if (part.type.includes("tool-")) {
           handleToolCall(part)
@@ -187,9 +175,91 @@ export function Chat({
   });
 
 
+  // Close canvas on component unmount
+  useEffect(() => {
+    return () => {
+      closeCanvas();
+    };
+  }, [closeCanvas]);
+
+  // Fetch chat title
+  useEffect(() => {
+    const fetchTitle = async () => {
+      const { title } = await getChatTitle({ chatId: id });
+      setChatTitle(title);
+    };
+    fetchTitle();
+  }, [id]);
+
+  // Update title in real-time when user types
+  useEffect(() => {
+    if (input.trim() && messages.length === 0) {
+      setChatTitle(input.slice(0, 50) + (input.length > 50 ? '...' : ''));
+    }
+  }, [input, messages.length]);
+
+
+  const handleToolCall = useCallback((part: UIMessagePart<UIDataTypes, ToolType>) => {
+    if (part.type === 'tool-flashcardGeneratorTool' || part.type === "tool-quizGeneratorTool") {
+      setCanvasKey(prev => prev + 1);
+      if (!isCanvasOpen) {
+        setChatId(id)
+        openCanvas(part.type === 'tool-flashcardGeneratorTool' ? 'flashcards' : 'quiz');
+      }
+    }
+  }, [isCanvasOpen, id, openCanvas]);
+
+  const handleSubmit = (files: Attachment[], e?: SubmitEvent) => {
+    e?.preventDefault();
+
+    // Optimistic UI: Add new chat to sidebar immediately
+    const userMessage = messages?.filter(m => m.role === "user")[0]?.parts?.filter(p => p.type === "text")[0]?.text || input
+    if (messages.length === 0 && userMessage.trim()) {
+      const optimisticTitle = userMessage.slice(0, 50) + (userMessage.length > 50 ? '...' : '');
+      setChatTitle(optimisticTitle);
+
+      // Trigger sidebar update with optimistic chat
+      mutate('/api/history', (data: any) => {
+        if (data?.chats) {
+          const optimisticChat = {
+            id,
+            title: optimisticTitle,
+            createdAt: new Date(),
+            userId: 'current-user' // This will be replaced by actual data
+          };
+          return {
+            chats: [optimisticChat, ...data.chats]
+          };
+        }
+        return data;
+      }, { revalidate: false });
+    }
+
+    // Map Attachment[] to File[] and create a FileList
+    const fileArray = files.map(att => att.file);
+    // Create a FileList from the array (using DataTransfer)
+    const dataTransfer = new DataTransfer();
+    fileArray.forEach(file => dataTransfer.items.add(file));
+    const fileList = dataTransfer.files;
+    append({ text: input, files: fileList });
+    setInput('');
+  };
+
+
+
 
   return (
     <div className={"flex h-screen w-full"}>
+      {/* Dynamic Island */}
+      <DynamicIsland
+        chatId={id}
+        chatTitle={chatTitle}
+        messages={messages}
+        onOpenCanvas={openCanvas}
+        isCanvasOpen={isCanvasOpen}
+        canvasMode={canvasMode}
+      />
+
       <div
         className={"transition-all duration-300 flex flex-col min-w-0 h-full bg-background w-full"}
         style={{

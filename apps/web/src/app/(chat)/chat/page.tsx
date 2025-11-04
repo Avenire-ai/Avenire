@@ -12,7 +12,7 @@ export default async function Page() {
   const id = uuid();
 
   const cookieStore = await cookies();
-  const modelIdFromCookie = cookieStore.get('chat-model');
+  const modelIdFromCookie = cookieStore.get('chat-model') || "";
 
   return (
     <>
@@ -27,3 +27,5 @@ export default async function Page() {
     </>
   );
 }
+
+export const dynamic = 'force-dynamic'

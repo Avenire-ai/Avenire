@@ -25,7 +25,7 @@ const formatDate = (date: Date) => {
 // Rename the Account interface to avoid conflict
 interface ConnectedAccount {
   id: string;
-  provider: string;
+  providerId: string;
   createdAt: Date;
   updatedAt: Date;
   accountId: string;
@@ -39,9 +39,9 @@ const AccountCard: React.FC<{ account: ConnectedAccount, unlinkAccount: () => vo
     className="flex items-center justify-between rounded-lg border p-4 transition-all hover:border-primary hover:bg-muted/30"
   >
     <div className="flex items-center space-x-4">
-      {account.provider === "google" ? <GoogleIcon /> : <GithubIcon />}
+      {account.providerId === "google" ? <GoogleIcon /> : <GithubIcon />}
       <div className="space-y-0.5">
-        <p className="font-medium">{account.provider.charAt(0).toUpperCase() + account.provider.slice(1)}</p>
+        <p className="font-medium">{account.providerId.charAt(0).toUpperCase() + account.providerId.slice(1)}</p>
         <p className="text-xs text-muted-foreground">Connected on {formatDate(account.createdAt)}</p>
       </div>
     </div>
@@ -96,7 +96,7 @@ export const SecuritySettings = () => {
 
   const updateAccounts = async () => {
     const { data } = await listAccounts()
-    setAccounts(data?.filter((d) => d.provider !== "credential") || [])
+    setAccounts(data?.filter((d) => d.providerId !== "credential") || [])
   }
   const updatePasskey = async () => {
     const { data } = await passkey.listUserPasskeys()
@@ -224,18 +224,18 @@ export const SecuritySettings = () => {
                   key={account.id}
                   account={account}
                   unlinkAccount={async () => {
-                    await unlinkAccount({ providerId: account.provider });
+                    await unlinkAccount({ providerId: account.providerId });
                     updateAccounts();
                   }}
                 />
               ))}
 
               {/* Add more providers that aren't connected */}
-              {accounts && !accounts.some((account) => account.provider === "github") && (
+              {accounts && !accounts.some((account) => account.providerId === "github") && (
                 <NotConnectedCard provider="github" />
               )}
 
-              {accounts && !accounts.some((account) => account.provider === "google") && (
+              {accounts && !accounts.some((account) => account.providerId === "google") && (
                 <NotConnectedCard provider="google" />
               )}
             </CardContent>
